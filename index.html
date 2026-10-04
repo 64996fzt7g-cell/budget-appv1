@@ -201,13 +201,14 @@ const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
 const YKEYS=["m","tx","ret","open","ap"];let YC={};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},yrs:{},
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},yrs:{},end:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
  if(o.yrs&&typeof o.yrs==="object"&&o.yrs[o.year]){const a=o.yrs[o.year];YKEYS.forEach(k=>{if(a[k]!=null)o[k]=a[k]})}
  for(const k in d)if(o[k]==null)o[k]=d[k];
  if(typeof o.yrs!=="object"||Array.isArray(o.yrs))o.yrs={};
+ if(typeof o.end!=="object"||Array.isArray(o.end))o.end={};
  if(Array.isArray(o.rec))o.rec.forEach(r=>{if(r.fy==null){r.fy=o.year;r.skip=(r.skip||[]).map(x=>x<100?o.year*100+x:x)}});
  Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
@@ -249,6 +250,8 @@ const retN=(m,n)=>S.ret.filter(t=>t.m===m&&t.c===n).reduce((a,t)=>a+t.a,0);
 const retM=m=>S.ret.filter(t=>t.m===m).reduce((a,t)=>a+t.a,0);
 const opm=(g,n)=>+(S.open[g+"|"+n])||0;
 const op=(g,n)=>opm(g,n)+prevIn(g,n);
+const live=(n,m)=>{const e=(S.end||{})[n];return !e||S.year*100+m<e};
+const vis=(g,m)=>S.g[g].filter(n=>live(n,m));
 const sum=(m,g)=>S.g[g].reduce((a,n)=>a+(g==="env"?spent(m,n):v(m,g,n)),0);
 const carry=m=>S.carry?(m>0?tot(m-1).r:prevRest()):0;
 const tot=m=>{const i=sum(m,"inc"),f=sum(m,"fix"),e=sum(m,"env"),s=sum(m,"sav"),p=sum(m,"pot"),c=carry(m);const fp=S.g.fix.reduce((a,n)=>a+Math.max(v(m,"fix",n),pre(m,n)),0),ep=S.g.env.reduce((a,n)=>a+Math.max(spent(m,n),v(m,"bud",n)),0);return{i,f,e,d:f+e,s,p,c,fp,ep,r:i+c-f-e-s-p,rf:i+c-fp-ep-s-p}};
@@ -259,7 +262,7 @@ const active=m=>{const t=tot(m);return !!(t.i||t.d||t.s||t.p)};
 const lastMonth=()=>{for(let k=11;k>=0;k--)if(active(k))return k;const d=new Date();return d.getFullYear()===S.year?d.getMonth():0};
 const inp=(m,k,n,val)=>`<input type="number" inputmode="decimal" step="0.01" value="${val||""}" placeholder="0" data-m="${m}" data-k="${k}" data-n="${esc(n)}" aria-label="${esc(n)}">`;
 const lineForm=g=>`<form class="addcat" data-form="addline" data-g="${g}"><input name="n" placeholder="Nouvelle ligne" maxlength="40" required aria-label="Nouvelle ligne ${GN[g]}"><button>+ Ajouter</button></form>`;
-const none=g=>S.g[g].length?"":`<p class="note">Aucune ligne : ajoutez-en une ci-dessous.</p>`;
+const none=g=>S.g[g].some(n=>!S.end[n])?"":`<p class="note">Aucune ligne : ajoutez-en une ci-dessous.</p>`;
 // ───────── Navigation ─────────
 const now=new Date();
 let cur=now.getFullYear()===S.year?now.getMonth():(now.getFullYear()<S.year?0:"an");
@@ -290,7 +293,7 @@ function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile 
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]))?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
  return hello+remind()+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
-const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${S.g.inc.map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
+const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${vis("inc",m).map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
 const fixPre=m=>S.g.fix.reduce((a,n)=>a+pre(m,n),0);
 const fixRest=m=>S.g.fix.reduce((a,n)=>a+Math.max(pre(m,n)-v(m,"fix",n),0),0);
@@ -299,27 +302,27 @@ function fixCard(m){
  <div class="kpis"><div class="kpi"><small>Prévu</small><b>${eur(fixPre(m))}</b></div><div class="kpi exp"><small>Payé</small><b>${eur(sum(m,"fix"))}</b></div><div class="kpi"><small>Reste à sortir</small><b>${eur(fixRest(m))}</b></div></div>
  ${m>0?`<button type="button" class="cp" data-act="copyprev" data-m="${m}">Copier les prévus de ${MOIS[m-1].toLowerCase()}</button>`:""}
  <div class="row fh fx"><span>Facture</span><span>Prévu</span><span>Payé</span></div>
- ${S.g.fix.map(n=>{const p=pre(m,n),r=v(m,"fix",n),ok=p>0&&r>=p;return`<div class="row${ok?" ok":""}"><span>${ok?"✓ ":""}${esc(n)}${(S.due||{})[n]?`<small class="note"> · le ${S.due[n].day}</small>`:""}</span><span class="two fx">${inp(m,"pre",n,p)}<button type="button" class="pay${ok?" on":""}" data-act="pay" data-m="${m}" data-n="${esc(n)}" title="${ok?"Annuler le paiement":"Valider le montant prévu"}" aria-label="${ok?"Annuler le paiement de":"Valider le prévu de"} ${esc(n)}"${p>0?"":" disabled"}>✓</button>${inp(m,"fix",n,r)}</span></div>`}).join("")}${none("fix")}${lineForm("fix")}</div>`}
+ ${vis("fix",m).map(n=>{const p=pre(m,n),r=v(m,"fix",n),ok=p>0&&r>=p;return`<div class="row${ok?" ok":""}"><span>${ok?"✓ ":""}${esc(n)}${(S.due||{})[n]?`<small class="note"> · le ${S.due[n].day}</small>`:""}</span><span class="two fx">${inp(m,"pre",n,p)}<button type="button" class="pay${ok?" on":""}" data-act="pay" data-m="${m}" data-n="${esc(n)}" title="${ok?"Annuler le paiement":"Valider le montant prévu"}" aria-label="${ok?"Annuler le paiement de":"Valider le prévu de"} ${esc(n)}"${p>0?"":" disabled"}>✓</button>${inp(m,"fix",n,r)}</span></div>`}).join("")}${none("fix")}${lineForm("fix")}</div>`}
 function envCard(m){
  const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
- const opt=g=>S.g[g].map(n=>`<option>${esc(n)}</option>`).join("");
- const bars=S.g.env.map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
+ const opt=g=>vis(g,m).map(n=>`<option>${esc(n)}</option>`).join("");
+ const bars=vis("env",m).map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
  return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2>
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
  ${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
  <h2 style="margin-top:16px">Budgets (facultatif)</h2><div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
-const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${opm(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.${hasData((S.yrs||{})[S.year-1])?" Le solde de fin "+(S.year-1)+" est reporté automatiquement : ces montants s'y ajoutent.":""}</p></details>`;
-const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du mois</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"adj"+g,n,v(m,"adj"+g,n))}</label>`).join("")}<p class="note">Montant en + ou − qui corrige le solde (intérêts, frais…).</p></details>`;
+const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${vis(g,0).map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${opm(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.${hasData((S.yrs||{})[S.year-1])?" Le solde de fin "+(S.year-1)+" est reporté automatiquement : ces montants s'y ajoutent.":""}</p></details>`;
+const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du mois</summary>${vis(g,m).map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"adj"+g,n,v(m,"adj"+g,n))}</label>`).join("")}<p class="note">Montant en + ou − qui corrige le solde (intérêts, frais…).</p></details>`;
 function potCard(m){
  return`<div id="sec-pot" class="card env"><h2>Enveloppes · ${eur(sum(m,"pot"))} versés</h2><p class="note" style="margin:0 0 6px">Saisissez le montant versé, puis ajoutez les dépenses de l'enveloppe dans « Dépenses du mois ». Elles ne comptent pas dans les dépenses.</p>
  <div class="row fh"><span>Enveloppe</span><span>Versé · Solde</span></div>
- ${S.g.pot.map(n=>`<div class="row"><span>${esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}${S.nobal.includes(n)?`<b style="width:96px;text-align:right;color:var(--mut)" title="Solde masqué (Réglages)">—</b>`:`<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b>`}</span></div>`).join("")}${none("pot")}
+ ${vis("pot",m).map(n=>`<div class="row"><span>${esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}${S.nobal.includes(n)?`<b style="width:96px;text-align:right;color:var(--mut)" title="Solde masqué (Réglages)">—</b>`:`<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b>`}</span></div>`).join("")}${none("pot")}
  ${adjBlock(m,"pot")}${openBlock("pot")}${lineForm("pot")}</div>`}
 function savCard(m){
  const rl=S.ret.map((t,i)=>[t,i]).filter(([t])=>t.m===m);
  return`<div id="sec-sav" class="card sav"><h2>Épargne · ${eur(sum(m,"sav"))} versés</h2>
  <div class="row fh"><span>Ligne</span><span>Versé · Solde</span></div>
- ${S.g.sav.map(n=>`<div class="row"><span>${esc(n)}</span><span class="two">${inp(m,"sav",n,v(m,"sav",n))}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`).join("")}${none("sav")}
+ ${vis("sav",m).map(n=>`<div class="row"><span>${esc(n)}</span><span class="two">${inp(m,"sav",n,v(m,"sav",n))}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`).join("")}${none("sav")}
  <div class="row hl" style="padding:8px 10px;border-radius:8px"><span><b>Solde total</b></span><b>${eur(totSolde(m))}</b></div>
  ${S.g.sav.length?`<details class="ret" data-id="ret-${m}"${rl.length?" open":""}><summary>− Retrait d'épargne${rl.length?" · "+eur(retM(m)):""}</summary><form class="add" data-form="addret" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Ligne">${S.g.sav.map(n=>`<option>${esc(n)}</option>`).join("")}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Motif"><button>Retirer</button></form>${rl.map(([t,i])=>`<div class="row"><span>${fdate(t.d)} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}</span><span>−${eur(t.a)} <button class="x" data-act="delret" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`).join("")}</details>`:""}
  <p class="note">Solde = solde du mois précédent + versé + ajustements − retraits.</p>
@@ -384,8 +387,9 @@ function goalsPage(){
 // ───────── Réglages ─────────
 let setTab="bud";
 function settings(){
- const rowsOf=g=>S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}">${g==="fix"?`<input class="due" type="number" min="1" max="31" inputmode="numeric" placeholder="Jour" data-due="${esc(n)}" value="${(S.due||{})[n]?S.due[n].day:""}" aria-label="Jour de prélèvement de ${esc(n)}" title="Jour du prélèvement">`:""}<span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("");
- const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].length} ligne${S.g[g].length>1?"s":""}</small></summary><div class="accb">${g==="fix"?`<p class="note" style="margin-top:0">Indiquez le <b>jour de prélèvement</b> de chaque facture : à cette date, le montant prévu est compté comme payé, sans rien valider. Vous n'avez qu'à corriger le « Payé » si le montant diffère.</p>`:""}${rowsOf(g)}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
+ const rowsOf=g=>S.g[g].map((n,i)=>S.end[n]?"":`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}">${g==="fix"?`<input class="due" type="number" min="1" max="31" inputmode="numeric" placeholder="Jour" data-due="${esc(n)}" value="${(S.due||{})[n]?S.due[n].day:""}" aria-label="Jour de prélèvement de ${esc(n)}" title="Jour du prélèvement">`:""}<span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Retirer cette ligne" title="Retirer à partir de ce mois">✕</button></span></div>`).join("");
+ const archBlock=g=>{const a=S.g[g].filter(n=>S.end[n]);return a.length?`<details data-id="arch-${g}" style="margin-top:10px"><summary>Lignes retirées (${a.length})</summary><p class="note">Elles n'apparaissent plus à partir de la date indiquée, mais gardent leur historique.</p>${a.map(n=>{const e=S.end[n];return`<div class="row"><span>${esc(n)}<br><small class="note">retirée depuis ${MOIS[e%100]} ${Math.floor(e/100)}</small></span><span class="mv"><button class="x" style="width:auto;padding:0 10px" data-act="unretire" data-n="${esc(n)}">Réactiver</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" data-hard="1" aria-label="Supprimer définitivement" title="Supprimer définitivement avec tout l'historique">🗑</button></span></div>`}).join("")}</details>`:""};
+ const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].filter(n=>!S.end[n]).length} ligne${S.g[g].filter(n=>!S.end[n]).length>1?"s":""}</small></summary><div class="accb">${g==="fix"?`<p class="note" style="margin-top:0">Indiquez le <b>jour de prélèvement</b> de chaque facture : à cette date, le montant prévu est compté comme payé, sans rien valider. Vous n'avez qu'à corriger le « Payé » si le montant diffère.</p>`:""}${rowsOf(g)}${none(g)}${lineForm(g)}${archBlock(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
  const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
@@ -402,7 +406,7 @@ function settings(){
  <p class="note" style="text-align:center"><a href="privacy.html" style="color:inherit">Politique de confidentialité</a></p>`}
 // ───────── Actions ─────────
 const exists=n=>S.g.inc.concat(S.g.fix,S.g.env,S.g.pot,S.g.sav).some(x=>x.toLowerCase()===n.toLowerCase());
-function addLine(g,raw){const n=clean(raw);if(!n)return;if(exists(n)){alert("Ce nom existe déjà.");return}S.g[g].push(n);save();draw()}
+function addLine(g,raw){const n=clean(raw);if(!n)return;if(exists(n)){alert(S.end[Object.keys(S.end).find(k=>k.toLowerCase()===n.toLowerCase())]?"Cette ligne existe dans les « Lignes retirées » : réactivez-la depuis Réglages.":"Ce nom existe déjà.");return}S.g[g].push(n);save();draw()}
 function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les données liées à un nom de ligne, pour toutes les années
  const key=k=>{const i=k.indexOf("|");return[k.slice(0,i),k.slice(i+1)]};
  const yearPart=()=>{
@@ -414,12 +418,25 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  Object.keys(S.yrs).forEach(y=>{if(+y!==y0){loadYear(+y);yearPart();stash()}});
  loadYear(y0);yearPart();stash();
  S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);
+ {const e2={};Object.keys(S.end||{}).forEach(k=>{const r=fn(k);if(r!==null)e2[r]=S.end[k]});S.end=e2}
  {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2}
  S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
 function renameLine(g,old,raw){const n=clean(raw),i=S.g[g].indexOf(old);if(!n||n===old||i<0){draw();return}
  if(exists(n)&&n.toLowerCase()!==old.toLowerCase()){alert("Ce nom existe déjà.");draw();return}
  S.g[g][i]=n;remap(x=>x===old?n:x);save();draw()}
-function delLine(g,n){if(!confirm("Supprimer « "+n+" » et tous ses montants saisis ?"))return;S.g[g]=S.g[g].filter(x=>x!==n);remap(x=>x===n?null:x);save();draw()}
+function retireLine(g,n){
+ const M=typeof lastM==="number"?lastM:(S.year===new Date().getFullYear()?new Date().getMonth():0);
+ if(g==="sav"||g==="pot"){const b=M>0?(g==="sav"?soldeSav(M-1,n):soldePot(M-1,n)):op(g,n);
+  if(Math.abs(b)>0.005){alert("Le solde de « "+n+" » n'est pas à zéro ("+eur(b)+") au début de "+MOIS[M]+". Videz-le ou ajustez-le d'abord (retrait, ajustement), puis retirez la ligne.");return}}
+ if(!confirm("Retirer « "+n+" » à partir de "+MOIS[M]+" "+S.year+" ?\n\nLes mois précédents gardent ses montants. La ligne disparaît d'ici à la fin (et des années suivantes).\n\nPour la retirer à partir d'un autre mois, ouvrez d'abord ce mois puis revenez dans Réglages.\nElle reste récupérable dans « Lignes retirées »."))return;
+ stash();const cut=(d,from)=>{Object.keys(d.m||{}).forEach(mm=>{if(+mm>=from)Object.keys(d.m[mm]).forEach(k=>{if(k.slice(k.indexOf("|")+1)===n)delete d.m[mm][k]})});
+  d.tx=(d.tx||[]).filter(t=>!(t.c===n&&t.m>=from));d.ret=(d.ret||[]).filter(t=>!(t.c===n&&(t.m==null||t.m>=from)));
+  Object.keys(d.ap||{}).forEach(k=>{const i=k.indexOf("|");if(k.slice(i+1)===n&&+k.slice(0,i)>=from)delete d.ap[k]})};
+ const cur0={m:S.m,tx:S.tx,ret:S.ret,ap:S.ap};cut(cur0,M);S.tx=cur0.tx;S.ret=cur0.ret;
+ Object.keys(S.yrs||{}).forEach(y=>{if(+y>S.year){const d=S.yrs[y];cut(d,0);Object.keys(d.open||{}).forEach(k=>{if(k.slice(k.indexOf("|")+1)===n)delete d.open[k]})}});
+ S.end=S.end||{};S.end[n]=S.year*100+M;if(S.due)delete S.due[n];S.rec=(S.rec||[]).filter(r=>r.c!==n);
+ stash();save();draw()}
+function delLine(g,n,hard){if(!hard){retireLine(g,n);return}if(!confirm("Supprimer définitivement « "+n+" » et TOUT son historique (toutes les années) ?"))return;S.g[g]=S.g[g].filter(x=>x!==n);remap(x=>x===n?null:x);save();draw()}
 function moveLine(g,i,d){const a=S.g[g],j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save();draw()}
 function saveGoal(id,f){const fd=new FormData(f),p=String(fd.get("month")||"").split("-");if(p.length<2)return;
  const g={id:id==="new"?String(Date.now()):id,name:clean(fd.get("name"))||"Objectif",t:+fd.get("t")||0,y:+p[0],m:+p[1]-1,lines:fd.getAll("l")};
@@ -456,7 +473,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
  else if(a==="sec")goSec(d.id);
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
- else if(a==="copyprev"){const m=+d.m;S.g.fix.forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
+ else if(a==="copyprev"){const m=+d.m;vis("fix",m).forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
  else if(a==="home")go("home");
  else if(a==="year")switchYear(+d.y);
  else if(a==="stab"){setTab=d.v;draw();scrollTo(0,0)}
@@ -467,7 +484,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="edtx"){editTx=+d.i;draw()}
  else if(a==="canceltx"){editTx=-1;draw()}
  else if(a==="delret"){S.ret.splice(+d.i,1);save();draw()}
- else if(a==="delline")delLine(d.g,d.n);
+ else if(a==="delline")delLine(d.g,d.n,!!d.hard);
+ else if(a==="unretire"){delete S.end[d.n];save();draw()}
  else if(a==="up")moveLine(d.g,+d.i,-1);
  else if(a==="down")moveLine(d.g,+d.i,1);
  else if(a==="delgoal"){if(confirm("Supprimer cet objectif ?")){S.goals=S.goals.filter(x=>x.id!==d.id);save();draw()}}
@@ -602,7 +620,7 @@ function autoPay(){
   if(!S.g.fix.includes(n))return;const dd=S.due[n];
   const fy=dd.fy==null?S.year:dd.fy;if(S.year<fy)return;
   for(let m=(S.year===fy?Math.max(0,dd.from|0):0);m<=last;m++){
-   const key=m+"|"+n;if(S.ap[key])continue;
+   if(!live(n,m))continue;const key=m+"|"+n;if(S.ap[key])continue;
    const dim=new Date(S.year,m+1,0).getDate(),day=Math.min(dd.day,dim);
    if(m===last&&S.year===ny&&day>today)continue;
    const p=pre(m,n);if(!(p>0))continue;
