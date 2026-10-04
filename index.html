@@ -124,6 +124,17 @@ button.tile small::after{content:"›";margin-left:auto;font-size:18px;line-heig
 #tabs button.on{color:var(--brand);background:var(--field)}
 html.locked #tabs{display:none}
 footer{margin-bottom:70px}
+.years{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(min-width:720px){.years{grid-template-columns:repeat(4,1fr)}}
+.ycard{display:flex;flex-direction:column;gap:2px;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:22px;padding:16px;cursor:pointer;min-height:150px}
+.ycard .yn{font:700 32px/1.1 var(--num);letter-spacing:-.02em}
+.ycard small{color:var(--mut);font-weight:600;margin-bottom:8px}
+.ycard .yl{display:flex;justify-content:space-between;gap:6px;font-size:13px;padding:2px 0}.ycard .yl i{font-style:normal;color:var(--mut)}
+.ycard .yl b{font-variant-numeric:tabular-nums;font-weight:600}.ycard .yl.empty{color:var(--mut)}
+.ycard.now{background:var(--hero);color:var(--herotxt);border-color:transparent}
+.ycard.now small,.ycard.now .yl i{color:inherit;opacity:.72}
+.ycard.sel{box-shadow:0 0 0 2px var(--brand)}
+.chip.on{background:var(--hero);color:var(--herotxt)}
 .row>input.due[type=number]{width:64px;text-align:center;padding:8px 4px}
 .hero details.proj{margin:14px 0 0;border-top:1px solid color-mix(in srgb,var(--herotxt) 22%,transparent);padding-top:10px}
 .hero details.proj>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;color:var(--herotxt);font-weight:600}
@@ -168,7 +179,7 @@ html.locked header,html.locked nav,html.locked main,html.locked footer{display:n
 <body>
 <noscript><p style="padding:20px">Cette application nécessite JavaScript.</p></noscript>
 <script>window.addEventListener("error",function(e){var a=document.getElementById("app");if(a&&!a.innerHTML.trim())a.innerHTML='<div style="padding:16px;margin:16px;border:1px solid #e2572b;border-radius:12px;font:15px system-ui">L\'application n\'a pas pu démarrer.<br><small>'+String(e.message||e.error)+'</small></div>'});</script>
-<header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><button id="cloud" class="chip" data-act="cloud" hidden></button></header>
+<header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><span style="display:flex;gap:8px;align-items:center"><button id="cloud" class="chip" data-act="cloud" hidden></button><button id="yr" class="chip" data-act="home" aria-label="Choisir l'année"></button></span></header>
 <nav id="nav" aria-label="Mois"></nav>
 <main id="app"></main>
 <nav id="tabs" aria-label="Navigation principale"></nav>
@@ -183,15 +194,34 @@ const GOOGLE_CLIENT_ID="";
 const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},
+const YKEYS=["m","tx","ret","open","ap"];let YC={};
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},yrs:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
+ if(o.yrs&&typeof o.yrs==="object"&&o.yrs[o.year]){const a=o.yrs[o.year];YKEYS.forEach(k=>{if(a[k]!=null)o[k]=a[k]})}
  for(const k in d)if(o[k]==null)o[k]=d[k];
+ if(typeof o.yrs!=="object"||Array.isArray(o.yrs))o.yrs={};
+ if(Array.isArray(o.rec))o.rec.forEach(r=>{if(r.fy==null){r.fy=o.year;r.skip=(r.skip||[]).map(x=>x<100?o.year*100+x:x)}});
+ Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
  ["tx","ret","goals","nobal","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
 let S;try{S=normalize(JSON.parse(store.getItem(KEY)||"null"))}catch(e){S=DEF()}
-function save(){S.updated=Date.now();try{store.setItem(KEY,JSON.stringify(S))}catch(e){}
+// ───────── Plusieurs années ─────────
+function pack(x){x=x||S;const o={};for(const k in x)if(!YKEYS.includes(k))o[k]=x[k];o.yrs=Object.assign({},x.yrs);o.yrs[x.year]={m:x.m,tx:x.tx,ret:x.ret,open:x.open,ap:x.ap};return o}
+function stash(){S.yrs=S.yrs||{};S.yrs[S.year]={m:S.m,tx:S.tx,ret:S.ret,open:S.open,ap:S.ap}}
+function loadYear(y){const d=(S.yrs||{})[y];YC={};S.year=y;S.m=d?d.m:{};S.tx=d?d.tx:[];S.ret=d?d.ret:[];S.open=d?d.open:{};S.ap=d?d.ap:{}}
+function withYear(y,fn){const sv={year:S.year,m:S.m,tx:S.tx,ret:S.ret,open:S.open,ap:S.ap};
+ if(y!==sv.year){const d=(S.yrs||{})[y];S.year=y;S.m=d?d.m:{};S.tx=d?d.tx:[];S.ret=d?d.ret:[];S.open=d?d.open:{};S.ap=d?d.ap:{}}
+ try{return fn()}finally{Object.assign(S,sv)}}
+const hasData=d=>!!d&&(Object.keys(d.m||{}).length>0||(d.tx||[]).length>0);
+function prevIn(g,n){if(g!=="sav"&&g!=="pot")return 0;const d=(S.yrs||{})[S.year-1];if(!hasData(d))return 0;
+ const k=S.year+"|"+g+"|"+n;if(k in YC)return YC[k];return YC[k]=withYear(S.year-1,()=>g==="sav"?soldeSav(11,n):soldePot(11,n))}
+function prevRest(){const d=(S.yrs||{})[S.year-1];if(!hasData(d))return 0;const k=S.year+"|rest";if(k in YC)return YC[k];return YC[k]=withYear(S.year-1,()=>tot(11).r)}
+function yearSummary(y){return withYear(y,()=>{let I=0,D=0,Sv=0,P=0;for(let m=0;m<12;m++){const t=tot(m);I+=t.i;D+=t.d;Sv+=t.s;P+=t.p}return{I,D,Sv,P,R:I-D-Sv-P,has:hasData({m:S.m,tx:S.tx})}})}
+function switchYear(y){if(y!==S.year){stash();loadYear(y)}const now=new Date();cur=y===now.getFullYear()?now.getMonth():0;genRec();autoPay();save();nav();nav2();draw();scrollTo(0,0)}
+{const ny0=new Date().getFullYear();if(S.year!==ny0){stash();loadYear(ny0)}}
+function save(){S.updated=Date.now();YC={};try{store.setItem(KEY,JSON.stringify(pack()))}catch(e){}
  if(!getMeta().since)setMeta({since:Date.now()});scheduleSync()}
 // ───────── Outils ─────────
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -211,9 +241,10 @@ const v=(m,k,n)=>+((S.m[m]||{})[k+"|"+n])||0;
 const spent=(m,n)=>S.tx.filter(t=>t.m===m&&t.c===n).reduce((a,t)=>a+t.a,0);
 const retN=(m,n)=>S.ret.filter(t=>t.m===m&&t.c===n).reduce((a,t)=>a+t.a,0);
 const retM=m=>S.ret.filter(t=>t.m===m).reduce((a,t)=>a+t.a,0);
-const op=(g,n)=>+(S.open[g+"|"+n])||0;
+const opm=(g,n)=>+(S.open[g+"|"+n])||0;
+const op=(g,n)=>opm(g,n)+prevIn(g,n);
 const sum=(m,g)=>S.g[g].reduce((a,n)=>a+(g==="env"?spent(m,n):v(m,g,n)),0);
-const carry=m=>S.carry&&m>0?tot(m-1).r:0;
+const carry=m=>S.carry?(m>0?tot(m-1).r:prevRest()):0;
 const tot=m=>{const i=sum(m,"inc"),f=sum(m,"fix"),e=sum(m,"env"),s=sum(m,"sav"),p=sum(m,"pot"),c=carry(m);const fp=S.g.fix.reduce((a,n)=>a+Math.max(v(m,"fix",n),pre(m,n)),0),ep=S.g.env.reduce((a,n)=>a+Math.max(spent(m,n),v(m,"bud",n)),0);return{i,f,e,d:f+e,s,p,c,fp,ep,r:i+c-f-e-s-p,rf:i+c-fp-ep-s-p}};
 const soldeSav=(m,n)=>op("sav",n)+ALL.slice(0,m+1).reduce((a,k)=>a+v(k,"sav",n)+v(k,"adjsav",n)-retN(k,n),0);
 const soldePot=(m,n)=>op("pot",n)+ALL.slice(0,m+1).reduce((a,k)=>a+v(k,"pot",n)-spent(k,n)+v(k,"adjpot",n),0);
@@ -230,6 +261,7 @@ let lastM=typeof cur==="number"?cur:0;
 const ICO={m:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',an:'<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-7"/></svg>',obj:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg>',set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'};
 function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementById("nav");
  n.hidden=typeof cur!=="number";
+ const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
  document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
@@ -238,7 +270,7 @@ function go(x){editTx=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
+ app.innerHTML=cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync()}
 // ───────── Vue d'un mois ─────────
@@ -250,7 +282,7 @@ function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile 
  return`<div class="bilan"><div class="hero"><small>${T.r<0?"Dépassement":"Reste actuel"}${T.c?" · report inclus":""}</small><span class="big${T.r<0?" neg":""}">${eur(T.r)}</span>${bar}${proj}</div>
  <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
- const hello=!Object.keys(S.m).length&&!S.tx.length?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
+ const hello=!Object.keys(S.m).length&&!S.tx.length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]))?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
  return hello+remind()+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
 const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${S.g.inc.map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
@@ -270,7 +302,7 @@ function envCard(m){
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
  ${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
  <h2 style="margin-top:16px">Budgets (facultatif)</h2><div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
-const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${op(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.</p></details>`;
+const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${opm(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.${hasData((S.yrs||{})[S.year-1])?" Le solde de fin "+(S.year-1)+" est reporté automatiquement : ces montants s'y ajoutent.":""}</p></details>`;
 const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du mois</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"adj"+g,n,v(m,"adj"+g,n))}</label>`).join("")}<p class="note">Montant en + ou − qui corrige le solde (intérêts, frais…).</p></details>`;
 function potCard(m){
  return`<div id="sec-pot" class="card env"><h2>Enveloppes · ${eur(sum(m,"pot"))} versés</h2><p class="note" style="margin:0 0 6px">Saisissez le montant versé, puis ajoutez les dépenses de l'enveloppe dans « Dépenses du mois ». Elles ne comptent pas dans les dépenses.</p>
@@ -351,7 +383,6 @@ function settings(){
  const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
- <label class="row"><span>Année</span><input type="number" value="${S.year}" data-set="year" min="2000" max="2100" style="width:96px"></label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label></div>
  <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
  ${recCard()}`;
@@ -365,14 +396,18 @@ function settings(){
 // ───────── Actions ─────────
 const exists=n=>S.g.inc.concat(S.g.fix,S.g.env,S.g.pot,S.g.sav).some(x=>x.toLowerCase()===n.toLowerCase());
 function addLine(g,raw){const n=clean(raw);if(!n)return;if(exists(n)){alert("Ce nom existe déjà.");return}S.g[g].push(n);save();draw()}
-function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les données liées à un nom de ligne
+function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les données liées à un nom de ligne, pour toutes les années
  const key=k=>{const i=k.indexOf("|");return[k.slice(0,i),k.slice(i+1)]};
- Object.keys(S.m).forEach(m=>{const o=S.m[m],out={};Object.keys(o).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)out[p+"|"+r]=o[k]});S.m[m]=out});
- const oo={};Object.keys(S.open).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)oo[p+"|"+r]=S.open[k]});S.open=oo;
- ["tx","ret"].forEach(t=>{S[t]=S[t].map(x=>{const r=fn(x.c);return r===null?null:Object.assign({},x,{c:r})}).filter(Boolean)});
+ const yearPart=()=>{
+  Object.keys(S.m).forEach(m=>{const o=S.m[m],out={};Object.keys(o).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)out[p+"|"+r]=o[k]});S.m[m]=out});
+  const oo={};Object.keys(S.open).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)oo[p+"|"+r]=S.open[k]});S.open=oo;
+  ["tx","ret"].forEach(t=>{S[t]=S[t].map(x=>{const r=fn(x.c);return r===null?null:Object.assign({},x,{c:r})}).filter(Boolean)});
+  const a2={};Object.keys(S.ap||{}).forEach(k=>{const i=k.indexOf("|"),r=fn(k.slice(i+1));if(r!==null)a2[k.slice(0,i)+"|"+r]=S.ap[k]});S.ap=a2};
+ const y0=S.year;stash();
+ Object.keys(S.yrs).forEach(y=>{if(+y!==y0){loadYear(+y);yearPart();stash()}});
+ loadYear(y0);yearPart();stash();
  S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);
- {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2;
-  const a2={};Object.keys(S.ap||{}).forEach(k=>{const i=k.indexOf("|"),r=fn(k.slice(i+1));if(r!==null)a2[k.slice(0,i)+"|"+r]=S.ap[k]});S.ap=a2}
+ {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2}
  S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
 function renameLine(g,old,raw){const n=clean(raw),i=S.g[g].indexOf(old);if(!n||n===old||i<0){draw();return}
  if(exists(n)&&n.toLowerCase()!==old.toLowerCase()){alert("Ce nom existe déjà.");draw();return}
@@ -382,7 +417,7 @@ function moveLine(g,i,d){const a=S.g[g],j=i+d;if(j<0||j>=a.length)return;[a[i],a
 function saveGoal(id,f){const fd=new FormData(f),p=String(fd.get("month")||"").split("-");if(p.length<2)return;
  const g={id:id==="new"?String(Date.now()):id,name:clean(fd.get("name"))||"Objectif",t:+fd.get("t")||0,y:+p[0],m:+p[1]-1,lines:fd.getAll("l")};
  const i=S.goals.findIndex(x=>x.id===id);if(i>=0)S.goals[i]=g;else S.goals.push(g);save();draw()}
-function exportJson(){setMeta({lastBackup:Date.now()});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
+function exportJson(){setMeta({lastBackup:Date.now()});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(pack())],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
 // Conversion d'un export de l'ancienne application personnelle (budget2026.json) vers ce format
 function fromPersonal(o){
  const G0={inc:["Reste du mois précédent","Salaire Léa","Salaire Eva","Bonus","Études","Remboursements"],
@@ -405,19 +440,21 @@ function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=ne
   let o;try{o=JSON.parse(String(r.result).replace(/^\uFEFF/,""))}catch(e){msg="Ce fichier n'est pas un JSON valide.";throw e}
   if(!o||typeof o!=="object"||Array.isArray(o)){msg="Format non reconnu (le fichier ne contient pas un budget).";throw 0}
   let conv=false;
-  if(!o.g||!o.m){if(!isPersonal(o)){msg="Format non reconnu : ni un export de cette application, ni un export de l'ancienne application personnelle.";throw 0}
+  if(!o.g||(!o.m&&!o.yrs)){if(!isPersonal(o)){msg="Format non reconnu : ni un export de cette application, ni un export de l'ancienne application personnelle.";throw 0}
    try{o=fromPersonal(o);conv=true}catch(e){msg="Erreur pendant la conversion : "+(e&&e.message||e);throw e}}
   if(!confirm((conv?"Export de l'ancienne application personnelle détecté : il sera converti. ":"")+"Remplacer les données actuelles par celles du fichier ?")){inp.value="";return}
-  const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(nn));location.reload()}
+  const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(pack(nn)));location.reload()}
   catch(e){alert(msg||"Import impossible : "+(e&&e.message||e));inp.value=""}};r.readAsText(f)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const d=b.dataset,a=d.act;
  if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
  else if(a==="sec")goSec(d.id);
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
  else if(a==="copyprev"){const m=+d.m;S.g.fix.forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
+ else if(a==="home")go("home");
+ else if(a==="year")switchYear(+d.y);
  else if(a==="stab"){setTab=d.v;draw();scrollTo(0,0)}
  else if(a==="setapp"){setTab="app";go("set")}
- else if(a==="deltx"){editTx=-1;const t=S.tx[+d.i];if(t&&t.r){const r=(S.rec||[]).find(x=>x.id===t.r);if(r)(r.skip=r.skip||[]).push(t.m)}S.tx.splice(+d.i,1);save();draw()}
+ else if(a==="deltx"){editTx=-1;const t=S.tx[+d.i];if(t&&t.r){const r=(S.rec||[]).find(x=>x.id===t.r);if(r)(r.skip=r.skip||[]).push(S.year*100+t.m)}S.tx.splice(+d.i,1);save();draw()}
  else if(a==="mkrec")mkRec(+d.i);
  else if(a==="delrec")delRec(d.id);
  else if(a==="edtx"){editTx=+d.i;draw()}
@@ -490,7 +527,7 @@ async function gPut(id,body){
  const bd="b"+Date.now(),meta=JSON.stringify({name:FN,parents:["appDataFolder"],mimeType:"application/json"});
  const mp="--"+bd+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+meta+"\r\n--"+bd+"\r\nContent-Type: application/json\r\n\r\n"+body+"\r\n--"+bd+"--";
  const r=await gfetch(UP+"?uploadType=multipart&fields=id",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+bd},body:mp});return (await r.json()).id}
-function pull(R){S=normalize(R);try{store.setItem(KEY,JSON.stringify(S))}catch(e){}setMeta({base:S.updated||0});nav();draw()}
+function pull(R){const y0=S.year;S=normalize(R);if(S.year!==y0){stash();loadYear(y0)}try{store.setItem(KEY,JSON.stringify(pack()))}catch(e){}setMeta({base:S.updated||0});nav();draw()}
 function askConflict(L,R){return new Promise(res=>{const d=document.createElement("div");d.id="modal";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");
  d.innerHTML=`<div class="mbox"><h2>Deux versions différentes</h2><p>Les données de cet appareil (modifiées le ${fmtDT(L)}) et celles de Google Drive (modifiées le ${fmtDT(R)}) ne sont pas les mêmes. Laquelle garder ? L'autre sera remplacée.</p><div class="btns"><button data-r="remote">Garder Google Drive</button><button data-r="local">Garder cet appareil</button><button data-r="later">Décider plus tard</button></div></div>`;
  d.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;d.remove();res(b.dataset.r)});document.body.appendChild(d);d.querySelector("button").focus()})}
@@ -501,10 +538,10 @@ async function syncNow(manual){
  if(!navigator.onLine){gSet("err","Hors connexion : la synchronisation reprendra plus tard.");return}
  gBusy=true;gSet("busy","Synchronisation…");
  try{
-  const L=S.updated||0,base=getMeta().base||0,snap=JSON.stringify(S),f=await gFind();
+  const L=S.updated||0,base=getMeta().base||0,snap=JSON.stringify(pack()),f=await gFind();
   if(!f){if(L){await gPut(null,snap);setMeta({base:L})}}
   else{
-   const R=await gGet(f.id);if(!R||typeof R!=="object"||!R.g||!R.m)throw new Error("Le fichier sur Google Drive est illisible : il n'a pas été modifié.");
+   const R=await gGet(f.id);if(!R||typeof R!=="object"||!R.g||(!R.m&&!R.yrs))throw new Error("Le fichier sur Google Drive est illisible : il n'a pas été modifié.");
    const Rt=R.updated||0;
    if(Rt===L)setMeta({base:L});
    else if(!L||(L===base&&Rt>base))pull(R);
@@ -513,7 +550,7 @@ async function syncNow(manual){
     gSet("conflict","Deux versions différentes : choisissez laquelle garder.");
     const c=await askConflict(L,Rt);
     if(c==="remote")pull(R);
-    else if(c==="local"){S.updated=Math.max(L,Rt)+1;try{store.setItem(KEY,JSON.stringify(S))}catch(e){}await gPut(f.id,JSON.stringify(S));setMeta({base:S.updated})}
+    else if(c==="local"){S.updated=Math.max(L,Rt)+1;try{store.setItem(KEY,JSON.stringify(pack()))}catch(e){}await gPut(f.id,JSON.stringify(pack()));setMeta({base:S.updated})}
     else{gSet("conflict","Conflit non résolu : touchez ☁ pour choisir.");return}
    }}
   setMeta({lastSync:Date.now()});gSet("ok","");
@@ -535,7 +572,7 @@ function syncBox(){const m=getMeta(),msg=gMsg?`<br><b>${esc(gMsg)}</b>`:"";
 function renderSync(){const m=getMeta(),c=document.getElementById("cloud");
  if(c){if(m.gd&&GOOGLE_CLIENT_ID){c.hidden=false;c.textContent=({busy:"☁ Synchro…",ok:"☁ À jour",auth:"☁ Reconnecter",err:"☁ Erreur",conflict:"☁ Conflit"})[gState]||"☁"}else c.hidden=true}
  const b=document.getElementById("syncbox");if(b)b.innerHTML=syncBox()}
-async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".json",blob=new Blob([JSON.stringify(S)],{type:"application/json"});
+async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".json",blob=new Blob([JSON.stringify(pack())],{type:"application/json"});
  try{const file=new File([blob],name,{type:"application/json"});
   if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});setMeta({lastBackup:Date.now()});draw();return}}
  catch(e){if(e&&e.name==="AbortError")return}
@@ -543,6 +580,11 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
 function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
  const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
  return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
+// ───────── Page d'accueil : les années ─────────
+function home(){const now=new Date(),ny=now.getFullYear();
+ const ys=[...new Set([2025,2026,2027,2028,ny,S.year,...Object.keys(S.yrs||{}).map(Number)])].filter(y=>y>=2000&&y<=2100).sort((a,b)=>a-b);
+ return`<p class="note" style="margin:6px 2px 14px">Choisissez une année. L'application s'ouvre toujours sur le mois en cours.</p><div class="years">${ys.map(y=>{const q=yearSummary(y);
+  return`<button type="button" class="ycard${y===ny?" now":""}${y===S.year?" sel":""}" data-act="year" data-y="${y}"><span class="yn">${y}</span><small>${y===ny?"En cours":y<ny?"Passée":"À venir"}</small>${q.has?`<span class="yl"><i>Revenus</i><b>${eur(q.I)}</b></span><span class="yl"><i>Dépenses</i><b>${eur(q.D)}</b></span><span class="yl"><i>Reste</i><b>${eur(q.R)}</b></span>`:`<span class="yl empty">Aucune donnée</span>`}</button>`}).join("")}</div>`}
 // ───────── Prélèvement automatique des factures ─────────
 function autoPay(){
  const now=new Date(),ny=now.getFullYear();let last=-1,today=0;
@@ -550,7 +592,8 @@ function autoPay(){
  let ch=false;S.ap=S.ap||{};
  Object.keys(S.due||{}).forEach(n=>{
   if(!S.g.fix.includes(n))return;const dd=S.due[n];
-  for(let m=Math.max(0,dd.from|0);m<=last;m++){
+  const fy=dd.fy==null?S.year:dd.fy;if(S.year<fy)return;
+  for(let m=(S.year===fy?Math.max(0,dd.from|0):0);m<=last;m++){
    const key=m+"|"+n;if(S.ap[key])continue;
    const dim=new Date(S.year,m+1,0).getDate(),day=Math.min(dd.day,dim);
    if(m===last&&S.year===ny&&day>today)continue;
@@ -561,7 +604,7 @@ function autoPay(){
  if(ch)save()}
 function setDue(n,val){const day=Math.round(+val);S.due=S.due||{};
  if(!(day>=1&&day<=31))delete S.due[n];
- else{const now=new Date();S.due[n]={day,from:S.due[n]?S.due[n].from:(S.year===now.getFullYear()?now.getMonth():0)}}
+ else{const now=new Date();S.due[n]={day,from:S.due[n]?S.due[n].from:(S.year===now.getFullYear()?now.getMonth():0),fy:S.due[n]&&S.due[n].fy!=null?S.due[n].fy:S.year}}
  autoPay();save();draw()}
 // ───────── Dépenses récurrentes ─────────
 function genRec(){
@@ -569,22 +612,23 @@ function genRec(){
  if(S.year<ny)last=11;else if(S.year===ny){last=now.getMonth();today=now.getDate()}
  let added=false;
  (S.rec||[]).forEach(r=>{
-  for(let m=Math.max(0,r.from|0);m<=last;m++){
+  const fy=r.fy==null?S.year:r.fy;if(S.year<fy)return;
+  for(let m=(S.year===fy?Math.max(0,r.from|0):0);m<=last;m++){
    const dim=new Date(S.year,m+1,0).getDate(),day=Math.min(Math.max(1,(r.day|0)||1),dim);
    if(m===last&&S.year===ny&&day>today)continue;
-   if((r.skip||[]).includes(m)||S.tx.some(t=>t.r===r.id&&t.m===m))continue;
+   if((r.skip||[]).includes(S.year*100+m)||S.tx.some(t=>t.r===r.id&&t.m===m))continue;
    S.tx.push({m,d:S.year+"-"+pad(m+1)+"-"+pad(day),c:r.c,a:r.a,n:r.n||"",r:r.id});added=true}});
  if(added)save()}
 function addRec(fd){const c=fd.get("c"),a=+fd.get("a"),day=Math.min(31,Math.max(1,Math.round(+fd.get("day"))||1)),from=Math.min(11,Math.max(0,+fd.get("from")||0));
- if(!c||!(a>0))return;S.rec=S.rec||[];S.rec.push({id:"r"+Date.now(),c,a,n:String(fd.get("n")||"").trim(),day,from,skip:[]});genRec();save();draw()}
+ if(!c||!(a>0))return;S.rec=S.rec||[];S.rec.push({id:"r"+Date.now(),c,a,n:String(fd.get("n")||"").trim(),day,from,fy:S.year,skip:[]});genRec();save();draw()}
 function mkRec(i){const t=S.tx[i];if(!t||t.r)return;const day=+(t.d||"").slice(8)||1;
  if(!confirm("Répéter « "+t.c+(t.n?" · "+t.n:"")+" » ("+eur(t.a)+") le "+day+" de chaque mois, à partir de ce mois ?"))return;
- const id="r"+Date.now();S.rec=S.rec||[];S.rec.push({id,c:t.c,a:t.a,n:t.n||"",day,from:t.m,skip:[]});t.r=id;genRec();save();draw()}
+ const id="r"+Date.now();S.rec=S.rec||[];S.rec.push({id,c:t.c,a:t.a,n:t.n||"",day,from:t.m,fy:S.year,skip:[]});t.r=id;genRec();save();draw()}
 function delRec(id){if(!confirm("Arrêter cette dépense récurrente ? Les dépenses déjà créées sont conservées."))return;S.rec=(S.rec||[]).filter(r=>r.id!==id);save();draw()}
 function recCard(){const L=S.rec||[],now=new Date(),m0=S.year===now.getFullYear()?now.getMonth():0;
  const opt=g=>S.g[g].map(n=>`<option>${esc(n)}</option>`).join("");
  return`<div class="card"><h2>Dépenses récurrentes</h2><p class="note" style="margin-top:0">Elles s'ajoutent toutes seules chaque mois, à la date choisie, dans « Dépenses du mois ». Vous pouvez aussi toucher ↻ sur une dépense déjà saisie.</p>
- ${L.map(r=>`<div class="row"><span>${esc(r.c)}${r.n?" · "+esc(r.n):""}<br><small class="note">le ${r.day} de chaque mois · dès ${MOIS[r.from].toLowerCase()}</small></span><span>${eur(r.a)} <button class="x" data-act="delrec" data-id="${r.id}" aria-label="Arrêter">✕</button></span></div>`).join("")||`<p class="note">Aucune pour l'instant.</p>`}
+ ${L.map(r=>`<div class="row"><span>${esc(r.c)}${r.n?" · "+esc(r.n):""}<br><small class="note">le ${r.day} de chaque mois · dès ${MOIS[r.from].toLowerCase()} ${r.fy||S.year}</small></span><span>${eur(r.a)} <button class="x" data-act="delrec" data-id="${r.id}" aria-label="Arrêter">✕</button></span></div>`).join("")||`<p class="note">Aucune pour l'instant.</p>`}
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addrec" style="margin-top:10px"><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Intitulé (ex. Essence)" maxlength="60"><input type="number" name="day" min="1" max="31" placeholder="Jour du mois (1-31)" aria-label="Jour du mois"><select name="from" aria-label="À partir de">${MOIS.map((x,i)=>`<option value="${i}"${i===m0?" selected":""}>dès ${x.toLowerCase()}</option>`).join("")}</select><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne dans Dépenses ou Enveloppes.</p>`}</div>`}
 // ───────── Verrouillage (code PIN / Face ID) ─────────
 const LK=KEY+"_lock";let hiddenAt=0,padKey=null;
