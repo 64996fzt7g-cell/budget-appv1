@@ -124,6 +124,16 @@ button.tile small::after{content:"›";margin-left:auto;font-size:18px;line-heig
 #tabs button.on{color:var(--brand);background:var(--field)}
 html.locked #tabs{display:none}
 footer{margin-bottom:70px}
+.seg{display:flex;gap:4px;background:var(--field);padding:4px;border-radius:16px;margin:2px 0 14px}
+.seg button{flex:1;border:0;background:none;color:var(--mut);font:600 14px/1 inherit;font-family:inherit;padding:11px 8px;border-radius:12px;cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(20,20,40,.1)}
+details.acc{margin:0;border-top:1px solid var(--line)}
+details.acc>summary{display:flex;justify-content:space-between;align-items:center;list-style:none;padding:14px 2px;color:var(--ink);font-weight:600;cursor:pointer}
+details.acc>summary::-webkit-details-marker{display:none}
+details.acc>summary small{color:var(--mut);font-weight:500;margin-left:auto;margin-right:10px}
+details.acc>summary::after{content:"›";color:var(--mut);font-size:20px;line-height:1;transition:transform .15s}
+details.acc[open]>summary::after{transform:rotate(90deg)}
+.accb{padding:0 0 12px}
 html.locked header,html.locked nav,html.locked main,html.locked footer{display:none}
 #lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
 .lbox{width:100%;max-width:320px;text-align:center}
@@ -323,20 +333,24 @@ function goalsPage(){
  <div class="card sav"><details data-id="goal-new"${S.goals.length?"":" open"}><summary style="color:var(--sav);font-weight:600">＋ Nouvel objectif</summary>${goalForm(null)}</details></div>
  <div class="grid">${cards}</div>`}
 // ───────── Réglages ─────────
+let setTab="bud";
 function settings(){
- const grp=g=>`<div class="card"><h2>${GN[g]}</h2>${S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}"><span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("")}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div>`;
- return`<div class="card"><h2>Général</h2>
+ const rowsOf=g=>S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}"><span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("");
+ const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].length} ligne${S.g[g].length>1?"s":""}</small></summary><div class="accb">${rowsOf(g)}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
+ const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
+ if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
  <label class="row"><span>Année</span><input type="number" value="${S.year}" data-set="year" min="2000" max="2100" style="width:96px"></label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label></div>
- <p class="note" style="margin:0 0 10px">Renommez une ligne en modifiant son nom, changez l'ordre avec ▲▼, supprimez avec ✕ (ses montants sont alors supprimés). Les noms doivent être différents.</p>
- <div class="grid">${["inc","fix","env","pot","sav"].map(grp).join("")}</div>
- ${recCard()}
- ${lockCard()}
- <div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>
- <div class="card"><h2>iCloud Drive / Fichiers</h2><p class="note" style="margin-top:0">Pour garder une copie dans iCloud : touchez « Enregistrer dans Fichiers », puis choisissez iCloud Drive. Cette copie n'est pas automatique, refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier » et choisissez ce fichier.${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
- <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
- <div class="card"><h2>Mes données</h2><p class="note" style="margin-top:0">Vos données restent dans ce navigateur, sur cet appareil, sauf si vous activez la synchronisation Google Drive.</p><div class="btns"><button data-act="exp">Exporter (JSON)</button><button class="danger" data-act="wipe">Tout effacer</button></div></div>`}
+ <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
+ ${recCard()}`;
+ const gd=GOOGLE_CLIENT_ID?`<div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>`:"";
+ return seg+`${lockCard()}
+ <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ».${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
+ <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button><button data-act="exp">Exporter (JSON)</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
+ ${gd}
+ <div class="card"><h2>Effacer les données</h2><p class="note" style="margin-top:0">Supprime tout le contenu de cet appareil. Exportez d'abord si vous voulez le garder.</p><div class="btns"><button class="danger" data-act="wipe">Tout effacer</button></div></div>
+ <p class="note" style="text-align:center"><a href="privacy.html" style="color:inherit">Politique de confidentialité</a></p>`}
 // ───────── Actions ─────────
 const exists=n=>S.g.inc.concat(S.g.fix,S.g.env,S.g.pot,S.g.sav).some(x=>x.toLowerCase()===n.toLowerCase());
 function addLine(g,raw){const n=clean(raw);if(!n)return;if(exists(n)){alert("Ce nom existe déjà.");return}S.g[g].push(n);save();draw()}
@@ -387,6 +401,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="sec")goSec(d.id);
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
  else if(a==="copyprev"){const m=+d.m;S.g.fix.forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
+ else if(a==="stab"){setTab=d.v;draw();scrollTo(0,0)}
+ else if(a==="setapp"){setTab="app";go("set")}
  else if(a==="deltx"){editTx=-1;const t=S.tx[+d.i];if(t&&t.r){const r=(S.rec||[]).find(x=>x.id===t.r);if(r)(r.skip=r.skip||[]).push(t.m)}S.tx.splice(+d.i,1);save();draw()}
  else if(a==="mkrec")mkRec(+d.i);
  else if(a==="delrec")delRec(d.id);
@@ -408,7 +424,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="gconnect")gToken().then(()=>{setMeta({gd:true,base:0});syncNow(true)}).catch(gFail);
  else if(a==="gsync"){if(tokenValid())syncNow(true);else connectThenSync()}
  else if(a==="gdisc"){if(confirm("Se déconnecter de Google Drive ? La copie déjà présente dans votre Drive n'est pas supprimée."))gDisconnect()}
- else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy")go("set");else syncNow(true)}
+ else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy"){setTab="app";go("set")}else syncNow(true)}
  else if(a==="imp")document.getElementById("imp").click();
  else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);store.removeItem(LK);location.reload()}}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
@@ -511,7 +527,7 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setMeta({lastBackup:Date.now()});draw()}
 function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
  const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
- return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="go" data-v="set" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
+ return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
 // ───────── Dépenses récurrentes ─────────
 function genRec(){
  const now=new Date(),ny=now.getFullYear();let last=-1,today=0;
