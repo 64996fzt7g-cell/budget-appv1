@@ -180,6 +180,11 @@ input,select,textarea,input.bud,.two.fx input{font-size:16px!important}
 #alertbox.on{transform:none;opacity:1}
 .alertc{pointer-events:auto;max-width:460px;width:100%;text-align:left;display:flex;flex-direction:column;gap:4px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-left:6px solid;border-radius:16px;padding:12px 14px;box-shadow:0 12px 32px rgba(20,20,60,.28);font:inherit;font-size:15px;cursor:pointer}
 .alertc small{color:var(--mut);font-size:12px}
+.srch{display:inline-block;margin:0 0 10px;border:0;background:var(--field);color:var(--ink);border-radius:12px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+button.back{border:0;background:none;color:var(--brand);font:inherit;font-size:16px;padding:6px 2px;margin:0 0 6px;cursor:pointer}
+.fqs{display:flex;gap:6px;flex-wrap:wrap}.fqs select{flex:1;min-width:110px}
+button.txr{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);color:inherit;font:inherit;cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:10px 2px;border-radius:0}
+button.txr:active{background:var(--field)}
 </style>
 </head>
 <body>
@@ -274,12 +279,12 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
  document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
-let editTx=-1;
-function go(x){editTx=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
+let editTx=-1,editRet=-1;
+function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
+ app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
 // ───────── Vue d'un mois ─────────
@@ -307,7 +312,7 @@ function envCard(m){
  const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
  const opt=g=>vis(g,m).map(n=>`<option>${esc(n)}</option>`).join("");
  const bars=vis("env",m).map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
- return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2>
+ return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2><button type="button" class="srch" data-act="txs">🔍 Rechercher dans toutes les dépenses</button>
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
  ${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
  <h2 style="margin-top:16px">Budgets (facultatif)</h2><div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
@@ -324,7 +329,7 @@ function savCard(m){
  <div class="row fh"><span>Ligne</span><span>Versé · Solde</span></div>
  ${vis("sav",m).map(n=>`<div class="row"><span>${esc(n)}</span><span class="two">${inp(m,"sav",n,v(m,"sav",n))}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`).join("")}${none("sav")}
  <div class="row hl" style="padding:8px 10px;border-radius:8px"><span><b>Solde total</b></span><b>${eur(totSolde(m))}</b></div>
- ${S.g.sav.length?`<details class="ret" data-id="ret-${m}"${rl.length?" open":""}><summary>− Retrait d'épargne${rl.length?" · "+eur(retM(m)):""}</summary><form class="add" data-form="addret" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Ligne">${S.g.sav.map(n=>`<option>${esc(n)}</option>`).join("")}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Motif"><button>Retirer</button></form>${rl.map(([t,i])=>`<div class="row"><span>${fdate(t.d)} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}</span><span>−${eur(t.a)} <button class="x" data-act="delret" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`).join("")}</details>`:""}
+ ${S.g.sav.length?`<details class="ret" data-id="ret-${m}"${rl.length||editRet>=0?" open":""}><summary>− Retrait d'épargne${rl.length?" · "+eur(retM(m)):""}</summary><form class="add" data-form="addret" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Ligne">${S.g.sav.map(n=>`<option>${esc(n)}</option>`).join("")}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Motif"><button>Retirer</button></form>${rl.map(([t,i])=>editRet===i?`<form class="row txedit" data-form="editret" data-i="${i}"><div class="txb"><div class="txh">${fdate(t.d)} · <b>${esc(t.c)}</b></div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Motif" maxlength="60" aria-label="Motif"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="cancelret" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${fdate(t.d)} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}</span><span>−${eur(t.a)} <button class="x" data-act="edret" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="delret" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`).join("")}</details>`:""}
  <p class="note">Solde = solde du mois précédent + versé + ajustements − retraits.</p>
  ${adjBlock(m,"sav")}${openBlock("sav")}${lineForm("sav")}</div>`}
 function posteCard(ms,title){
@@ -401,6 +406,8 @@ function settings(){
  return seg+`${lockCard()}
  <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ».${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
  <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button><button data-act="exp">Exporter (JSON)</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
+ <div class="card"><h2>Tableur (CSV)</h2><p class="note" style="margin-top:0">Exportez vos budgets et vos dépenses pour Excel ou Numbers, ou importez un tableau (par exemple une ancienne année). Enregistrez votre tableur au format CSV avant de l'importer.</p><div class="btns"><button data-act="csvb">Exporter le budget</button><button data-act="csvt">Exporter les dépenses</button><button data-act="csvi">Importer un CSV</button></div><input id="impcsv" type="file" accept=".csv,text/csv,text/plain" hidden>
+ <details data-id="csvhelp" style="margin-top:10px"><summary>Format du fichier à importer</summary><p class="note"><b>Budget :</b> colonnes <i>Année ; Mois ; Groupe ; Ligne ; Type ; Montant</i>, une ligne par montant.<br>Groupe / Type : Revenus (Réel) · Factures (Prévu, Payé) · Dépenses (Budget) · Enveloppes (Versé, Ajustement) · Épargne (Versé, Ajustement, Retrait). Mois « Départ » avec Type « Solde de départ » pour les soldes de début d'année. Les lignes inconnues sont créées.<br><b>Dépenses :</b> colonnes <i>Année ; Date ; Mois ; Catégorie ; Montant ; Note</i> (date AAAA-MM-JJ ou JJ/MM/AAAA). La catégorie doit déjà exister.</p><div class="btns"><button data-act="csvm">Télécharger un modèle</button></div></details></div>
  ${gd}
  <div class="card"><h2>Effacer les données</h2><p class="note" style="margin-top:0">Supprime tout le contenu de cet appareil. Exportez d'abord si vous voulez le garder.</p><div class="btns"><button class="danger" data-act="wipe">Tout effacer</button></div></div>
  <p class="note" style="text-align:center"><a href="privacy.html" style="color:inherit">Politique de confidentialité</a></p>`}
@@ -482,6 +489,15 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="mkrec")mkRec(+d.i);
  else if(a==="delrec")delRec(d.id);
  else if(a==="edtx"){editTx=+d.i;draw()}
+ else if(a==="txs"){fq={q:"",c:"",y:"all",m:""};go("tx")}
+ else if(a==="backtx"){go(typeof lastM==="number"?lastM:0)}
+ else if(a==="gotx"){switchYear(+d.y);go(+d.m)}
+ else if(a==="csvb")shareCsv(csvBudget(),"budget-"+fmtD(new Date())+".csv")
+ else if(a==="csvt")shareCsv(csvTx(),"depenses-"+fmtD(new Date())+".csv")
+ else if(a==="csvm")shareCsv(CSV_MODEL.replace(/\r\n$/,""),"modele-import-budget.csv")
+ else if(a==="csvi")document.getElementById("impcsv").click()
+ else if(a==="edret"){editRet=+d.i;draw()}
+ else if(a==="cancelret"){editRet=-1;draw()}
  else if(a==="canceltx"){editTx=-1;draw()}
  else if(a==="delret"){S.ret.splice(+d.i,1);save();draw()}
  else if(a==="delline")delLine(d.g,d.n,!!d.hard);
@@ -503,8 +519,11 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy"){setTab="app";go("set")}else syncNow(true)}
  else if(a==="imp")document.getElementById("imp").click();
  else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);store.removeItem(LK);location.reload()}}});
+document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.fq==="q"){fq.q=t.value;const r=document.getElementById("txres");if(r)r.innerHTML=txRes()}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  if(t.id==="imp")importJson(t);
+ else if(t.id==="impcsv"){if(t.files[0])importCsv(t.files[0]);t.value=""}
+ else if(d.fq!==undefined){fq[d.fq]=t.value;const r=document.getElementById("txres");if(r)r.innerHTML=txRes()}
  else if(d.lockdelay!==undefined){const L=getLock();if(L){L.delay=+t.value;setLock(L)}}
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
@@ -520,6 +539,7 @@ document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.fo
  else if(d.form==="edittx"){const t=S.tx[+d.i],a=+fd.get("a");if(t&&a>0){t.a=a;t.n=String(fd.get("n")||"").trim();editTx=-1;save();draw()}}
  else if(d.form==="addrec")addRec(fd);
  else if(d.form==="addtx"){S.tx.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
+ else if(d.form==="editret"){const t=S.ret[+d.i],a=+fd.get("a");if(t&&a>0){t.a=a;t.n=String(fd.get("n")||"").trim();editRet=-1;save();draw()}}
  else if(d.form==="addret"){S.ret.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="goal")saveGoal(d.id,f)});
 // ───────── Sauvegarde & synchronisation ─────────
@@ -605,7 +625,7 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setMeta({lastBackup:Date.now()});draw()}
 function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
  const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
- return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
+ return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>. <button type="button" class="srch" style="margin:6px 0 0" data-act="files">Enregistrer maintenant</button></div>`:""}
 // ───────── Page d'accueil : les années ─────────
 function home(){const now=new Date(),ny=now.getFullYear();
  const ys=[...new Set([2025,2026,2027,2028,ny,S.year,...Object.keys(S.yrs||{}).map(Number)])].filter(y=>y>=2000&&y<=2100).sort((a,b)=>a-b);
@@ -733,6 +753,104 @@ function showAlert(l,pct){const A=ALERTS[l],msg=A.m[Math.floor(Math.random()*A.m
 function budgetAlert(){if(S.noalert||isLocked()||typeof cur!=="number")return;const n=new Date();if(S.year!==n.getFullYear()||cur!==n.getMonth())return;
  const pct=spentPct(cur),lvl=[98,90,85].find(x=>pct>=x)||0,k="al|"+S.year+"|"+cur,meta=getMeta(),al=meta.alerts||{},prev=al[k]||0;
  if(lvl===prev)return;al[k]=lvl;setMeta({alerts:al});if(lvl>prev)showAlert(lvl,pct)}
+
+// ───────── Recherche dans les dépenses ─────────
+let fq={q:"",c:"",y:"all",m:""};
+const nz=s=>String(s==null?"":s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
+function txAll(){stash();const out=[];Object.keys(S.yrs).forEach(y=>{(S.yrs[y].tx||[]).forEach(t=>out.push({y:+y,m:t.m,d:t.d||"",c:t.c,a:+t.a||0,n:t.n||"",r:!!t.r}))});return out}
+function txRes(){const q=nz(fq.q);let L=txAll().filter(t=>(fq.y==="all"||t.y===+fq.y)&&(fq.m===""||t.m===+fq.m)&&(!fq.c||t.c===fq.c)&&(!q||nz(t.n).includes(q)||nz(t.c).includes(q)||String(t.a).replace(".",",").includes(q)||String(t.a).includes(q)));
+ L.sort((a,b)=>(b.d||(b.y+"-"+pad(b.m+1)+"-00")).localeCompare(a.d||(a.y+"-"+pad(a.m+1)+"-00")));
+ const tot=L.reduce((a,t)=>a+t.a,0),shown=L.slice(0,300);
+ return`<div class="hl" style="margin:10px 0"><b>${L.length}</b> dépense${L.length>1?"s":""} · total <b>${eur(tot)}</b>${L.length>300?" (300 premières affichées)":""}</div>`+(shown.length?shown.map(t=>`<button type="button" class="row txr" data-act="gotx" data-y="${t.y}" data-m="${t.m}"><span>${t.d?t.d.slice(8)+"/"+t.d.slice(5,7)+"/"+t.d.slice(0,4):MC[t.m]+" "+t.y} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}${t.r?" ↻":""}</span><span>${eur(t.a)}</span></button>`).join(""):`<p class="note">Aucune dépense ne correspond.</p>`)}
+function txPage(){const all=txAll(),ys=[...new Set(all.map(t=>t.y))].sort(),cs=[...new Set(all.map(t=>t.c))].sort((a,b)=>a.localeCompare(b));
+ return`<button type="button" class="back" data-act="backtx">‹ Retour</button><div class="card"><h2>Rechercher une dépense</h2>
+ <input type="search" data-fq="q" value="${esc(fq.q)}" placeholder="Mot, magasin, montant…" aria-label="Rechercher" style="width:100%;margin-bottom:8px">
+ <div class="fqs"><select data-fq="c" aria-label="Catégorie"><option value="">Toutes catégories</option>${cs.map(c=>`<option${fq.c===c?" selected":""}>${esc(c)}</option>`).join("")}</select>
+ <select data-fq="y" aria-label="Année"><option value="all">Toutes les années</option>${ys.map(y=>`<option value="${y}"${String(fq.y)===String(y)?" selected":""}>${y}</option>`).join("")}</select>
+ <select data-fq="m" aria-label="Mois"><option value="">Tous les mois</option>${MOIS.map((n,i)=>`<option value="${i}"${fq.m!==""&&+fq.m===i?" selected":""}>${n}</option>`).join("")}</select></div>
+ <div id="txres">${txRes()}</div></div>`}
+// ───────── Tableur (CSV) ─────────
+const GRP={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
+const fnum=x=>String(Math.round(x*100)/100).replace(".",",");
+const qcsv=s=>{s=String(s==null?"":s);return /[;"\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
+const csvLine=a=>a.map(qcsv).join(";");
+function csvBudget(){stash();const rows=[["Année","Mois","Groupe","Ligne","Type","Montant"]];
+ Object.keys(S.yrs).map(Number).sort().forEach(y=>{const d=S.yrs[y];
+  Object.keys(d.open||{}).forEach(k=>{const i=k.indexOf("|"),g=k.slice(0,i),n=k.slice(i+1),x=+d.open[k];if((g==="sav"||g==="pot")&&x&&S.g[g].includes(n))rows.push([y,"Départ",GRP[g],n,"Solde de départ",fnum(x)])});
+  for(let m=0;m<12;m++){const o=(d.m||{})[m]||{};
+   const add=(g,pf,type)=>S.g[g].forEach(n=>{const x=+o[pf+"|"+n];if(x)rows.push([y,MOIS[m],GRP[g],n,type,fnum(x)])});
+   add("inc","inc","Réel");add("fix","pre","Prévu");add("fix","fix","Payé");add("env","bud","Budget");add("pot","pot","Versé");add("pot","adjpot","Ajustement");add("sav","sav","Versé");add("sav","adjsav","Ajustement");
+   S.g.sav.forEach(n=>{const r=(d.ret||[]).filter(t=>t.m===m&&t.c===n).reduce((a,t)=>a+t.a,0);if(r)rows.push([y,MOIS[m],"Épargne",n,"Retrait",fnum(r)])})}});
+ return rows.map(csvLine).join("\r\n")}
+function csvTx(){const rows=[["Année","Date","Mois","Catégorie","Montant","Note"]];
+ txAll().sort((a,b)=>(a.y-b.y)||(a.m-b.m)||a.d.localeCompare(b.d)).forEach(t=>rows.push([t.y,t.d,MOIS[t.m],t.c,fnum(t.a),t.n]));return rows.map(csvLine).join("\r\n")}
+async function shareCsv(text,name){const blob=new Blob(["﻿"+text],{type:"text/csv;charset=utf-8"});
+ try{const f=new File([blob],name,{type:"text/csv"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==="AbortError")return}
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click()}
+function parseCSV(t){t=t.replace(/^﻿/,"");const first=t.split(/\r?\n/)[0],sep=[";","\t",","].sort((a,b)=>first.split(b).length-first.split(a).length)[0];
+ const rows=[];let row=[],f="",q=false;
+ for(let i=0;i<t.length;i++){const c=t[i];
+  if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+  else if(c==='"')q=true;else if(c===sep){row.push(f);f=""}
+  else if(c==="\n"||c==="\r"){if(c==="\r"&&t[i+1]==="\n")i++;row.push(f);rows.push(row);row=[];f=""}else f+=c}
+ if(f!==""||row.length){row.push(f);rows.push(row)}return rows.filter(r=>r.some(x=>x.trim()!==""))}
+const pnum=s=>{s=String(s==null?"":s).replace(/[\s €]/g,"");if(s.includes(","))s=s.replace(/\./g,"").replace(",",".");const x=parseFloat(s);return isNaN(x)?null:x};
+const pmonth=x=>{x=nz(x);if(!x)return null;if(/^\d+$/.test(x)){const n=+x;return n>=1&&n<=12?n-1:null}if(x==="depart")return"open";
+ const c=MOIS.map(nz);let i=c.indexOf(x);if(i>=0)return i;const k=c.map((v,j)=>v.startsWith(x)?j:-1).filter(j=>j>=0);return x.length>=3&&k.length===1?k[0]:null};
+const GKEY={revenus:"inc",revenu:"inc",factures:"fix",facture:"fix",depenses:"env",depense:"env",enveloppes:"pot",enveloppe:"pot",epargne:"sav"};
+function keyFor(g,t){t=nz(t);
+ if(t==="solde de depart"||t==="depart")return(g==="sav"||g==="pot")?"open":null;
+ if(g==="inc")return"inc";
+ if(g==="fix")return t==="prevu"?"pre":(t==="paye"||t==="reel")?"fix":null;
+ if(g==="env")return(t==="budget"||t==="prevu")?"bud":null;
+ if(g==="pot")return t==="ajustement"?"adjpot":(t==="verse"||t==="reel"||t==="budget")?"pot":null;
+ if(g==="sav")return t==="ajustement"?"adjsav":t==="retrait"?"ret":(t==="verse"||t==="reel")?"sav":null;return null}
+const iso=(y,m,d)=>y+"-"+pad(m+1)+"-"+pad(d);
+function parseDate(x){x=String(x||"").trim();let m=x.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m)return{y:+m[1],m:+m[2]-1,d:x.slice(0,10)};m=x.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return{y:+m[3],m:+m[2]-1,d:iso(+m[3],+m[2]-1,+m[1])};return null}
+function importCsv(file){const rd=new FileReader();rd.onload=()=>{try{
+ const rows=parseCSV(String(rd.result||""));if(rows.length<2)throw new Error("Le fichier est vide.");
+ const H=rows[0].map(nz),ix=n=>H.findIndex(h=>h===n),body=rows.slice(1);
+ if(ix("groupe")>=0&&ix("ligne")>=0&&ix("montant")>=0)importBudgetCsv(H,body);
+ else if(ix("categorie")>=0&&ix("montant")>=0&&(ix("date")>=0||ix("mois")>=0))importTxCsv(H,body);
+ else throw new Error("Colonnes non reconnues. Attendu : « Année ; Mois ; Groupe ; Ligne ; Type ; Montant » (budget) ou « Année ; Date ; Mois ; Catégorie ; Montant ; Note » (dépenses).")}
+ catch(e){alert("Import impossible : "+e.message)}};
+ rd.onerror=()=>alert("Lecture du fichier impossible.");rd.readAsText(file,"utf-8")}
+function importBudgetCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),m:c("mois"),g:c("groupe"),l:c("ligne"),t:c("type"),a:c("montant")};
+ const items=[],bad=[];
+ body.forEach((r,i)=>{const y=parseInt(r[ci.y],10),m=pmonth(r[ci.m]),g=GKEY[nz(r[ci.g])],n=clean(r[ci.l]),k=g?keyFor(g,ci.t>=0?r[ci.t]:"reel"):null,a=pnum(r[ci.a]);
+  if(!(y>=2000&&y<=2100)||m===null||!g||!n||!k||a===null){bad.push(i+2);return}
+  if(k!=="open"&&m==="open"){bad.push(i+2);return}
+  items.push({y,m,g,n,k,a})});
+ if(!items.length)throw new Error("Aucune ligne exploitable"+(bad.length?" (lignes ignorées : "+bad.slice(0,8).join(", ")+")":"")+".");
+ const years=[...new Set(items.map(x=>x.y))].sort();
+ if(!confirm("Importer "+items.length+" montant"+(items.length>1?"s":"")+" pour "+years.join(", ")+" ?\n\nLes cases présentes dans le fichier remplacent celles de l'application ; tout le reste est conservé."+(bad.length?"\n"+bad.length+" ligne(s) illisible(s) seront ignorées.":"")+"\n\nAstuce : exportez d'abord une sauvegarde."))return;
+ const y0=S.year;stash();let added=0,skipped=0;
+ try{years.forEach(y=>{loadYear(y);
+  items.filter(x=>x.y===y).forEach(x=>{
+   const inG=S.g[x.g].includes(x.n);
+   if(!inG){if(exists(x.n)){skipped++;return}S.g[x.g].push(x.n);added++}
+   if(x.k==="open"){S.open[x.g+"|"+x.n]=x.a}
+   else if(x.k==="ret"){S.ret=S.ret.filter(t=>!(t.m===x.m&&t.c===x.n&&t.n==="Import CSV"));S.ret.push({m:x.m,d:iso(y,x.m,1),c:x.n,a:x.a,n:"Import CSV"})}
+   else M(x.m)[x.k+"|"+x.n]=x.a});
+  stash()})}
+ finally{loadYear(y0)}
+ save();nav();draw();alert("Import terminé : "+(items.length-skipped)+" montant(s) importé(s)"+(added?", "+added+" ligne(s) créée(s)":"")+(skipped?", "+skipped+" ignoré(s) (nom déjà utilisé dans un autre groupe)":"")+".")}
+function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"),m:c("mois"),c:c("categorie"),a:c("montant"),n:c("note")};
+ const items=[];let bad=0,unk=new Set();
+ body.forEach(r=>{const dt=ci.d>=0?parseDate(r[ci.d]):null,a=pnum(r[ci.a]),cat=clean(r[ci.c]);
+  let y=ci.y>=0&&r[ci.y]!==""?parseInt(r[ci.y],10):(dt?dt.y:NaN),m=ci.m>=0&&r[ci.m]!==""?pmonth(r[ci.m]):(dt?dt.m:null);
+  if(!(y>=2000&&y<=2100)||m===null||m==="open"||a===null||a<=0||!cat){bad++;return}
+  if(!S.g.env.includes(cat)&&!S.g.pot.includes(cat)){unk.add(cat);bad++;return}
+  items.push({y,m,d:dt?dt.d:"",c:cat,a,n:String(ci.n>=0?r[ci.n]:"").trim().slice(0,60)})});
+ if(!items.length)throw new Error("Aucune dépense exploitable"+(unk.size?". Catégories inconnues : "+[...unk].slice(0,6).join(", ")+" (créez-les d'abord dans Réglages › Dépenses ou Enveloppes)":"")+".");
+ const years=[...new Set(items.map(x=>x.y))].sort();
+ if(!confirm("Importer "+items.length+" dépense"+(items.length>1?"s":"")+" ("+years.join(", ")+") ?\n\nLes dépenses déjà présentes à l'identique ne sont pas dupliquées."+(bad?"\n"+bad+" ligne(s) ignorée(s)"+(unk.size?" (catégories inconnues : "+[...unk].slice(0,4).join(", ")+")":"")+".":"")))return;
+ const y0=S.year;stash();let n=0;
+ try{years.forEach(y=>{loadYear(y);const have=new Map();S.tx.forEach(t=>{const k=[t.m,t.d||"",t.c,t.a,String(t.n||"").trim()].join("|");have.set(k,(have.get(k)||0)+1)});
+  items.filter(x=>x.y===y).forEach(x=>{const k=[x.m,x.d,x.c,x.a,x.n].join("|");if(have.get(k)>0){have.set(k,have.get(k)-1);return}S.tx.push({m:x.m,d:x.d,c:x.c,a:x.a,n:x.n});n++});stash()})}
+ finally{loadYear(y0)}
+ save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
+const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Démarrage ─────────
 genRec();autoPay();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length,sg=JSON.stringify(S.ap);genRec();autoPay();if((S.tx.length!==n||JSON.stringify(S.ap)!==sg)&&!isLocked())draw()}});
