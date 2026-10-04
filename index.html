@@ -176,6 +176,10 @@ html.locked header,html.locked nav,html.locked main,html.locked footer{display:n
 .txedit .ok{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation}
 input,select,textarea,input.bud,.two.fx input{font-size:16px!important}
+#alertbox{position:fixed;left:0;right:0;top:max(10px,env(safe-area-inset-top));z-index:60;display:flex;justify-content:center;padding:0 12px;pointer-events:none;transform:translateY(-140%);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1.2),opacity .25s}
+#alertbox.on{transform:none;opacity:1}
+.alertc{pointer-events:auto;max-width:460px;width:100%;text-align:left;display:flex;flex-direction:column;gap:4px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-left:6px solid;border-radius:16px;padding:12px 14px;box-shadow:0 12px 32px rgba(20,20,60,.28);font:inherit;font-size:15px;cursor:pointer}
+.alertc small{color:var(--mut);font-size:12px}
 </style>
 </head>
 <body>
@@ -274,7 +278,7 @@ function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
- document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync()}
+ document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
 // ───────── Vue d'un mois ─────────
 function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
  const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
@@ -385,7 +389,8 @@ function settings(){
  const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
- <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label></div>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="alert"${S.noalert?"":" checked"}> Alertes quand le budget du mois est consommé (85, 90 et 98 %)</label></div>
  <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
  ${recCard()}`;
  const gd=GOOGLE_CLIENT_ID?`<div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>`:"";
@@ -489,6 +494,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.due!==undefined)setDue(d.due,t.value);
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
+ else if(d.set==="alert"){S.noalert=!t.checked;save();draw()}
  else if(d.set==="title"){S.title=clean(t.value)||"Mon budget";save();draw()}
  else if(d.set==="year"){S.year=Math.min(2100,Math.max(2000,+t.value||S.year));save();nav();draw()}});
 document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.form)return;e.preventDefault();const fd=new FormData(f);
@@ -695,6 +701,20 @@ function lockCard(){
 document.addEventListener("visibilitychange",()=>{const L=getLock();if(!L||!canLock())return;
  if(document.hidden){hiddenAt=Date.now();if(L.delay===0&&!isLocked())lockNow()}
  else if(hiddenAt&&!isLocked()&&Date.now()-hiddenAt>=L.delay*60000)lockNow()});
+// ───────── Alertes de budget ─────────
+const ALERTS={85:{c:"#16a34a",m:["Attention, le budget commence à fondre plus vite qu'une glace en plein été ! 🍦","On est à 85 % ! C'est le moment idéal pour activer le mode « sage décision ». 🧘‍♂️","Petit coup d'œil dans le rétroviseur : 85 % utilisé ! On lève légèrement le pied sur l'accélérateur ? 🚗","Bravo pour ta gestion jusqu'ici ! Mais gardons une petite réserve pour la fin du mois. 😉","Hop hop hop ! La zone jaune approche. Tout va bien, mais garde l'œil ouvert ! 🟡"]},
+90:{c:"#f59e0b",m:["Alerte douceur : 90 % atteints ! Tes cartes bleues ont besoin d'un petit câlin (et de repos). 💳💤","90 % ! C'est le moment officiellement déclaré des repas « vide-frigo » créatifs ! 🧀🥫","Houston, on approche des 100 % ! Mode économie d'énergie activé sur le portefeuille. 🚀","Il reste 10 % ! Rappel amical : l'eau du robinet et les promenades au parc sont 100 % gratuites ! 🌳","On retient son souffle ! Plus que 10 % de marge. Tu gères, ne lâche rien ! 💪"]},
+98:{c:"#ef4444",m:["Code Rouge ! 🚨 Si tu achètes une baguette de pain, choisis bien la moins chère ! 🥖","98 % ! Ton portefeuille vient de se mettre en position fœtale. Ne le dérange plus ! 🙈","Mission Survivant : il te reste 2 % pour finir le mois. Que la force financière soit avec toi ! ⚔️","Arrête tout ! Ne respire même plus trop fort à côté d'un magasin ! 🛑💸","98 % ! On entre dans la zone légendaire du « je touche à rien jusqu'au mois prochain » ! 🏆"]}};
+function spentPct(m){const t=tot(m),base=t.i+t.c-t.s-t.p;return base>0?(t.d/base)*100:0}
+let alertTimer=0;
+function showAlert(l,pct){const A=ALERTS[l],msg=A.m[Math.floor(Math.random()*A.m.length)];
+ let box=document.getElementById("alertbox");if(!box){box=document.createElement("div");box.id="alertbox";box.setAttribute("role","status");box.setAttribute("aria-live","polite");document.body.appendChild(box)}
+ box.innerHTML=`<button type="button" class="alertc" style="border-left-color:${A.c}" aria-label="Fermer l'alerte"><b>${l} % du budget</b><span>${msg}</span><small>Dépensé ce mois : ${Math.round(pct)} % · touche pour fermer</small></button>`;
+ box.className="on";clearTimeout(alertTimer);const close=()=>{box.className="";clearTimeout(alertTimer)};
+ box.firstChild.onclick=close;alertTimer=setTimeout(close,9000);try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}}
+function budgetAlert(){if(S.noalert||isLocked()||typeof cur!=="number")return;const n=new Date();if(S.year!==n.getFullYear()||cur!==n.getMonth())return;
+ const pct=spentPct(cur),lvl=[98,90,85].find(x=>pct>=x)||0,k="al|"+S.year+"|"+cur,meta=getMeta(),al=meta.alerts||{},prev=al[k]||0;
+ if(lvl===prev)return;al[k]=lvl;setMeta({alerts:al});if(lvl>prev)showAlert(lvl,pct)}
 // ───────── Démarrage ─────────
 genRec();autoPay();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length,sg=JSON.stringify(S.ap);genRec();autoPay();if((S.tx.length!==n||JSON.stringify(S.ap)!==sg)&&!isLocked())draw()}});
