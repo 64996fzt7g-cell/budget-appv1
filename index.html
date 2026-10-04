@@ -86,6 +86,10 @@ html.locked header,html.locked nav,html.locked main,html.locked footer{display:n
 .links{display:flex;justify-content:space-around;margin-top:18px}
 .links button{border:0;background:none;color:var(--mut);font:inherit;cursor:pointer;padding:6px}
 .shake{animation:shk .35s}@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.txedit{flex-wrap:wrap}.txedit .txb{flex:1;min-width:200px}.txedit .txh{color:var(--mut);font-size:13px;margin-bottom:4px}
+.txedit .txi{display:flex;gap:6px}.txedit .txi input[name=n]{flex:1;min-width:0;width:auto;text-align:left;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:6px 8px;font:inherit}
+.txedit .txi input[name=a]{width:96px;text-align:right}.txedit .acts{display:flex;gap:4px;align-items:center}
+.txedit .ok{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 10px;font:inherit;cursor:pointer}
 </style>
 </head>
 <body>
@@ -151,7 +155,8 @@ let cur=now.getFullYear()===S.year?now.getMonth():(now.getFullYear()<S.year?0:"a
 function nav(){document.getElementById("nav").innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("")+
  [["an","Vue annuelle"],["obj","Objectifs"],["set","⚙ Réglages"]].map(([k,l])=>`<button data-act="go" data-v="${k}" class="${cur===k?"on":""}">${l}</button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
-function go(x){cur=x;nav();nav2();draw();scrollTo(0,0)}
+let editTx=-1;
+function go(x){editTx=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
@@ -180,7 +185,7 @@ function envCard(m){
  const bars=S.g.env.map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
  return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2>
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
- ${list.length?list.map(([t,i])=>`<div class="row"><span>${fdate(t.d)} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} <button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
+ ${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} <button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
  <h2 style="margin-top:16px">Budgets (facultatif)</h2><div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
 const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${op(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.</p></details>`;
 const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du mois</summary>${S.g[g].map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"adj"+g,n,v(m,"adj"+g,n))}</label>`).join("")}<p class="note">Montant en + ou − qui corrige le solde (intérêts, frais…).</p></details>`;
@@ -287,15 +292,41 @@ function saveGoal(id,f){const fd=new FormData(f),p=String(fd.get("month")||"").s
  const g={id:id==="new"?String(Date.now()):id,name:clean(fd.get("name"))||"Objectif",t:+fd.get("t")||0,y:+p[0],m:+p[1]-1,lines:fd.getAll("l")};
  const i=S.goals.findIndex(x=>x.id===id);if(i>=0)S.goals[i]=g;else S.goals.push(g);save();draw()}
 function exportJson(){setMeta({lastBackup:Date.now()});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
+// Conversion d'un export de l'ancienne application personnelle (budget2026.json) vers ce format
+function fromPersonal(o){
+ const G0={inc:["Reste du mois précédent","Salaire Léa","Salaire Eva","Bonus","Études","Remboursements"],
+  fix:["Appart 1","Appart 2","LOA Clio","Charges","Électricité","Orange","Prixtel","Canal +","Spotify","Disney","iCloud","Darty Max","Sport","Ass habitation","Ass CLIO","Ass Clio 6","Ass CACI Léa","Ass CACI Eva","Mutuelle Léa","Mutuelle Eva","Prév Léa","Prév Eva","Taxe foncière","Impôts","Frais bancaires","Predica","Juridique","Brossettes"],
+  env:["Courses","Transports","Loisirs","Vacances","Divers","Maison","Santé","Shopping"],
+  pot:["Noël","Animaux","Anniversaires","Casper","Argent de poche Eva","Argent de poche Léa"],
+  sav:["Coups durs","Vacances","Travaux","Livret jeune","PER Léa","PER Eva","Ass Vie Léa","Ass Vie Eva"]};
+ const g={};for(const k in G0){const l=o.lay&&Array.isArray(o.lay[k])?o.lay[k]:G0[k].concat(((o.cats||{})[k]||[]).filter(x=>!G0[k].includes(x)));g[k]=l.filter(x=>typeof x==="string")}
+ const has=(a,n)=>ALL.some(m=>o[m]&&typeof o[m]==="object"&&+o[m][a+"|"+n]);
+ if(!g.fix.includes("Free")&&(has("fix","Free")||has("pre","Free")))g.fix.push("Free");
+ const m={};ALL.forEach(k=>{const x=o[k];if(x&&typeof x==="object"&&!Array.isArray(x)){m[k]={};for(const q in x)if(q.includes("|"))m[k][q]=x[q]}});
+ const ach=Array.isArray(o.ach)?o.ach:["PER Léa","PER Eva","Ass Vie Léa","Ass Vie Eva"];
+ const GD={"Coups durs":{t:6000,y:2028,m:1},"Vacances":{t:1500,y:2027,m:5},"Achat maison":{t:35000,y:2035,m:5}};
+ const goals=(Array.isArray(o.glist)?o.glist:Object.keys(GD)).map((n,i)=>{const x=Object.assign({},GD[n],(o.goals||{})[n]);return{id:"p"+i,name:n,t:+x.t||0,y:+x.y,m:+x.m,lines:(n==="Achat maison"?ach:[n]).filter(a=>g.sav.includes(a))}}).filter(x=>x.lines.length&&x.y);
+ const yr=+o.year||2026,arr=a=>(Array.isArray(a)?a:[]).filter(t=>t&&typeof t==="object");
+ return Object.assign(DEF(),{title:o.title||("Budget "+yr),year:yr,carry:false,g,m,tx:arr(o.tx),ret:arr(o.ret),open:o.open&&typeof o.open==="object"?o.open:{},goals})}
+const isPersonal=o=>!o.g&&!o.m&&(o.tx||o.cats||o.lay||ALL.some(k=>o[k]&&typeof o[k]==="object"));
 function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
- r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||typeof o!=="object"||!o.g||!o.m)throw 0;if(!confirm("Remplacer les données actuelles par celles du fichier ?"))return;
-  const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(nn));location.reload()}catch(e){alert("Fichier invalide : choisissez un export JSON de cette application.")}};r.readAsText(f)}
+ r.onload=()=>{let msg="";try{
+  let o;try{o=JSON.parse(String(r.result).replace(/^\uFEFF/,""))}catch(e){msg="Ce fichier n'est pas un JSON valide.";throw e}
+  if(!o||typeof o!=="object"||Array.isArray(o)){msg="Format non reconnu (le fichier ne contient pas un budget).";throw 0}
+  let conv=false;
+  if(!o.g||!o.m){if(!isPersonal(o)){msg="Format non reconnu : ni un export de cette application, ni un export de l'ancienne application personnelle.";throw 0}
+   try{o=fromPersonal(o);conv=true}catch(e){msg="Erreur pendant la conversion : "+(e&&e.message||e);throw e}}
+  if(!confirm((conv?"Export de l'ancienne application personnelle détecté : il sera converti. ":"")+"Remplacer les données actuelles par celles du fichier ?")){inp.value="";return}
+  const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(nn));location.reload()}
+  catch(e){alert(msg||"Import impossible : "+(e&&e.message||e));inp.value=""}};r.readAsText(f)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const d=b.dataset,a=d.act;
  if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
  else if(a==="sec")goSec(d.id);
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
  else if(a==="copyprev"){const m=+d.m;S.g.fix.forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
- else if(a==="deltx"){S.tx.splice(+d.i,1);save();draw()}
+ else if(a==="deltx"){editTx=-1;S.tx.splice(+d.i,1);save();draw()}
+ else if(a==="edtx"){editTx=+d.i;draw()}
+ else if(a==="canceltx"){editTx=-1;draw()}
  else if(a==="delret"){S.ret.splice(+d.i,1);save();draw()}
  else if(a==="delline")delLine(d.g,d.n);
  else if(a==="up")moveLine(d.g,+d.i,-1);
@@ -326,6 +357,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.set==="year"){S.year=Math.min(2100,Math.max(2000,+t.value||S.year));save();nav();draw()}});
 document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.form)return;e.preventDefault();const fd=new FormData(f);
  if(d.form==="addline")addLine(d.g,fd.get("n"));
+ else if(d.form==="edittx"){const t=S.tx[+d.i],a=+fd.get("a");if(t&&a>0){t.a=a;t.n=String(fd.get("n")||"").trim();editTx=-1;save();draw()}}
  else if(d.form==="addtx"){S.tx.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="addret"){S.ret.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="goal")saveGoal(d.id,f)});
