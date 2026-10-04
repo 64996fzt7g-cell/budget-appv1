@@ -109,13 +109,13 @@ const GOOGLE_CLIENT_ID="";
 const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
  for(const k in d)if(o[k]==null)o[k]=d[k];
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
- ["tx","ret","goals"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
+ ["tx","ret","goals","nobal"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
 let S;try{S=normalize(JSON.parse(store.getItem(KEY)||"null"))}catch(e){S=DEF()}
 function save(){S.updated=Date.now();try{store.setItem(KEY,JSON.stringify(S))}catch(e){}
  if(!getMeta().since)setMeta({since:Date.now()});scheduleSync()}
@@ -192,7 +192,7 @@ const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du 
 function potCard(m){
  return`<div id="sec-pot" class="card env"><h2>Enveloppes · ${eur(sum(m,"pot"))} versés</h2><p class="note" style="margin:0 0 6px">Saisissez le montant versé, puis ajoutez les dépenses de l'enveloppe dans « Dépenses du mois ». Elles ne comptent pas dans les dépenses.</p>
  <div class="row fh"><span>Enveloppe</span><span>Versé · Solde</span></div>
- ${S.g.pot.map(n=>`<div class="row"><span>${esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b></span></div>`).join("")}${none("pot")}
+ ${S.g.pot.map(n=>`<div class="row"><span>${esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}${S.nobal.includes(n)?`<b style="width:96px;text-align:right;color:var(--mut)" title="Solde masqué (Réglages)">—</b>`:`<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b>`}</span></div>`).join("")}${none("pot")}
  ${adjBlock(m,"pot")}${openBlock("pot")}${lineForm("pot")}</div>`}
 function savCard(m){
  const rl=S.ret.map((t,i)=>[t,i]).filter(([t])=>t.m===m);
@@ -262,7 +262,7 @@ function goalsPage(){
  <div class="grid">${cards}</div>`}
 // ───────── Réglages ─────────
 function settings(){
- const grp=g=>`<div class="card"><h2>${GN[g]}</h2>${S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}"><span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("")}${none(g)}${lineForm(g)}</div>`;
+ const grp=g=>`<div class="card"><h2>${GN[g]}</h2>${S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}"><span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("")}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div>`;
  return`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
  <label class="row"><span>Année</span><input type="number" value="${S.year}" data-set="year" min="2000" max="2100" style="width:96px"></label>
@@ -282,7 +282,7 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  Object.keys(S.m).forEach(m=>{const o=S.m[m],out={};Object.keys(o).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)out[p+"|"+r]=o[k]});S.m[m]=out});
  const oo={};Object.keys(S.open).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)oo[p+"|"+r]=S.open[k]});S.open=oo;
  ["tx","ret"].forEach(t=>{S[t]=S[t].map(x=>{const r=fn(x.c);return r===null?null:Object.assign({},x,{c:r})}).filter(Boolean)});
- S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)})}
+ S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null)}
 function renameLine(g,old,raw){const n=clean(raw),i=S.g[g].indexOf(old);if(!n||n===old||i<0){draw();return}
  if(exists(n)&&n.toLowerCase()!==old.toLowerCase()){alert("Ce nom existe déjà.");draw();return}
  S.g[g][i]=n;remap(x=>x===old?n:x);save();draw()}
@@ -307,7 +307,7 @@ function fromPersonal(o){
  const GD={"Coups durs":{t:6000,y:2028,m:1},"Vacances":{t:1500,y:2027,m:5},"Achat maison":{t:35000,y:2035,m:5}};
  const goals=(Array.isArray(o.glist)?o.glist:Object.keys(GD)).map((n,i)=>{const x=Object.assign({},GD[n],(o.goals||{})[n]);return{id:"p"+i,name:n,t:+x.t||0,y:+x.y,m:+x.m,lines:(n==="Achat maison"?ach:[n]).filter(a=>g.sav.includes(a))}}).filter(x=>x.lines.length&&x.y);
  const yr=+o.year||2026,arr=a=>(Array.isArray(a)?a:[]).filter(t=>t&&typeof t==="object");
- return Object.assign(DEF(),{title:o.title||("Budget "+yr),year:yr,carry:false,g,m,tx:arr(o.tx),ret:arr(o.ret),open:o.open&&typeof o.open==="object"?o.open:{},goals})}
+ return Object.assign(DEF(),{title:o.title||("Budget "+yr),year:yr,carry:false,nobal:g.pot.filter(n=>n.startsWith("Argent de poche")),g,m,tx:arr(o.tx),ret:arr(o.ret),open:o.open&&typeof o.open==="object"?o.open:{},goals})}
 const isPersonal=o=>!o.g&&!o.m&&(o.tx||o.cats||o.lay||ALL.some(k=>o[k]&&typeof o[k]==="object"));
 function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{let msg="";try{
@@ -351,6 +351,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.lockdelay!==undefined){const L=getLock();if(L){L.delay=+t.value;setLock(L)}}
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
+ else if(d.bal!==undefined){S.nobal=S.nobal.filter(x=>x!==d.bal);if(!t.checked)S.nobal.push(d.bal);save();draw()}
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
  else if(d.set==="title"){S.title=clean(t.value)||"Mon budget";save();draw()}
