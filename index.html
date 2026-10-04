@@ -272,19 +272,19 @@ const none=g=>S.g[g].some(n=>!S.end[n])?"":`<p class="note">Aucune ligne : ajout
 const now=new Date();
 let cur=now.getFullYear()===S.year?now.getMonth():(now.getFullYear()<S.year?0:"an");
 let lastM=typeof cur==="number"?cur:0;
-const ICO={m:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',an:'<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-7"/></svg>',obj:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg>',set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'};
+const ICO={tips:'<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>',m:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',an:'<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-7"/></svg>',obj:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg>',set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'};
 function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementById("nav");
  n.hidden=typeof cur!=="number";
  const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
- document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
+ app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
 // ───────── Vue d'un mois ─────────
@@ -349,6 +349,62 @@ function year(){
  <div class="kpis"><div class="kpi"><small>Factures prévues</small><b>${eur(fx)}</b></div><div class="kpi exp"><small>Factures payées</small><b>${eur(fp)}</b></div><div class="kpi"><small>Reste à sortir</small><b>${eur(fr)}</b></div></div>
  <div class="kpis"><div class="kpi sav"><small>Retraits d'épargne</small><b>${eur(R)}</b></div><div class="kpi sav"><small>Épargne nette (versé − retraits)</small><b>${eur(s-R)}</b></div><div class="kpi sav"><small>Solde total fin ${MOIS[L].toLowerCase()}</small><b>${eur(totSolde(L))}</b></div></div>
  <div class="grid">${posteCard(ALL,"Dépenses par poste (année)")}<div class="card"><h2>Revenus et dépenses par mois</h2>${ch(k=>T[k].i,"var(--inc)",mx)}${ch(k=>T[k].d,"var(--exp)",mx)}</div><div class="card sav"><h2>Solde total de l'épargne</h2>${ch(k=>cu[k],"var(--sav)",cm)}</div></div>`}
+// ───────── Conseils d'épargne ─────────
+function histo(){stash();const ny=new Date(),yrs=[...new Set([...Object.keys(S.yrs||{}).map(Number),S.year])].sort(),out=[];
+ yrs.forEach(y=>withYear(y,()=>{for(let m=0;m<12;m++){if(y>ny.getFullYear()||(y===ny.getFullYear()&&m>=ny.getMonth()))continue;
+  const inc=S.g.inc.filter(n=>!/reste/i.test(n)).reduce((a,n)=>a+v(m,"inc",n),0),T=tot(m);if(!(inc>0||T.d>0))continue;
+  const cat={},fx={};S.g.env.forEach(n=>{const a=spent(m,n);if(a)cat[n]=a});S.g.fix.forEach(n=>{const a=v(m,"fix",n)||pre(m,n);if(a)fx[n]=a});
+  out.push({y,m,k:y*12+m,i:inc,d:T.d,s:T.s,p:T.p,sur:inc-T.d-T.s-T.p,cat,fx})}}));return out}
+const rnd5=x=>Math.max(0,Math.round(x/5)*5);
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:0;
+const med=a=>{if(!a.length)return 0;const b=[...a].sort((x,y)=>x-y),h=b.length>>1;return b.length%2?b[h]:(b[h-1]+b[h])/2};
+function tipsList(){const H=histo(),T=[],n=H.length;if(n<3)return{n,T,H};const L6=H.slice(-6),L12=H.slice(-12);
+ // 1. Capacité d'épargne
+ {const sur=L6.map(r=>r.sur),m=med(sur),mn=Math.min(...sur),sr=avg(L6.map(r=>r.i?r.s/r.i:0)),sugg=rnd5(Math.max(0,Math.min(m,avg(sur))*0.6));
+  T.push({ico:"💰",h:`Votre marge : environ ${eur(m)} par mois`,
+   b:`Sur vos ${L6.length} derniers mois, il reste en médiane ${eur(m)} après dépenses, épargne et enveloppes (au plus bas : ${eur(mn)}). Vous épargnez aujourd'hui ${pct(sr)} de vos revenus.`,
+   a:sugg>=20?`Piste : verser <b>${eur(sugg)} de plus par mois</b> en épargne (60 % de votre marge habituelle) en gardant le reste comme coussin.`:`Votre marge est faible : le plus utile est de regarder les postes ci-dessous avant d'augmenter l'épargne.`,save:sugg*12}) }
+ // 2. Postes en hausse (variables)
+ if(n>=6){const rec=H.slice(-3),old=H.slice(-12,-3),names=[...new Set(H.flatMap(r=>Object.keys(r.cat)))];
+  const up=names.map(c=>{const a=avg(rec.map(r=>r.cat[c]||0)),b=avg(old.map(r=>r.cat[c]||0));return{c,a,b,d:a-b}}).filter(x=>x.b>0&&x.d>=15&&x.a/x.b>=1.15).sort((x,y)=>y.d-x.d).slice(0,3);
+  if(up.length)T.push({ico:"📈",h:`${up.length>1?up.length+" postes montent":"Un poste monte"} ces 3 derniers mois`,
+   b:up.map(x=>`<b>${esc(x.c)}</b> : ${eur(x.a)} / mois contre ${eur(x.b)} avant (${x.d>0?"+":""}${Math.round((x.a/x.b-1)*100)} %)`).join("<br>"),
+   a:`Piste : si cette hausse n'est pas exceptionnelle (vacances, cadeaux…), revenir à votre niveau habituel libérerait environ <b>${eur(up.reduce((a,x)=>a+x.d,0))} par mois</b>.`,save:up.reduce((a,x)=>a+x.d,0)*12}) }
+ // 3. Plus gros postes
+ {const names=[...new Set(L12.flatMap(r=>Object.keys(r.cat)))],tot12=L12.reduce((a,r)=>a+r.d,0),rows=names.map(c=>[c,L12.reduce((a,r)=>a+(r.cat[c]||0),0)]).sort((x,y)=>y[1]-x[1]).slice(0,3).filter(x=>x[1]>0);
+  if(rows.length&&tot12>0){const per=12/L12.length,s10=rows.reduce((a,x)=>a+x[1],0)*0.1*per;
+   T.push({ico:"🧾",h:"Vos plus gros postes variables",b:rows.map(([c,a])=>`<b>${esc(c)}</b> : ${eur(a*per)} par an (${pct(a/tot12)} de vos dépenses)`).join("<br>"),
+    a:`Piste : <b>−10 %</b> sur ces trois postes représenterait environ <b>${eur(s10)} par an</b>.`,save:s10}) } }
+ // 4. Mois coûteux
+ {const by={};H.forEach(r=>{(by[r.m]=by[r.m]||[]).push(r.d)});const ms=Object.keys(by).map(Number);
+  if(ms.length>=9){const base=avg(ms.map(m=>avg(by[m]))),hi=ms.map(m=>({m,x:avg(by[m])-base})).filter(o=>o.x>=100&&o.x/base>=0.15).sort((a,b)=>b.x-a.x).slice(0,3);
+   if(hi.length){const ex=hi.reduce((a,o)=>a+o.x,0);T.push({ico:"📅",h:`${hi.map(o=>MOIS[o.m]).join(", ")} : ${hi.length>1?"des mois plus chers":"un mois plus cher"}`,
+    b:hi.map(o=>`<b>${MOIS[o.m]}</b> : ${eur(o.x)} de plus qu'un mois moyen`).join("<br>"),
+    a:`Piste : mettre <b>${eur(rnd5(ex/12))} par mois</b> de côté dans une enveloppe pour que ces mois ne grignotent pas votre reste.`,save:0})}} }
+ // 5. Factures en hausse
+ {const last=H[H.length-1],ups=[];Object.keys(last.fx).forEach(f=>{const ref=H.slice().reverse().find(r=>r.k<=last.k-6&&r.fx[f]);if(ref&&last.fx[f]>=ref.fx[f]*1.05&&last.fx[f]-ref.fx[f]>=2)ups.push({f,a:last.fx[f],b:ref.fx[f],mo:last.k-ref.k})});
+  ups.sort((x,y)=>(y.a-y.b)-(x.a-x.b));const u=ups.slice(0,4);
+  if(u.length)T.push({ico:"🔌",h:"Factures qui ont augmenté",b:u.map(x=>`<b>${esc(x.f)}</b> : ${eur(x.a)} contre ${eur(x.b)} il y a ${x.mo} mois (+${Math.round((x.a/x.b-1)*100)} %)`).join("<br>"),
+   a:`Piste : comparer les offres ou renégocier ces contrats. Surcoût annuel actuel : <b>${eur(u.reduce((a,x)=>a+(x.a-x.b),0)*12)}</b>.`,save:u.reduce((a,x)=>a+(x.a-x.b),0)*12}) }
+ // 6. Abonnements
+ {const re=/canal|disney|netflix|spotify|icloud|prime|deezer|youtube|apple|orange|free|prixtel|sfr|bouygues|sport|darty|abonn/i,last=H.slice(-3),names=Object.keys(last[last.length-1].fx).filter(f=>re.test(f));
+  const rows=names.map(f=>[f,avg(last.map(r=>r.fx[f]||0))]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
+  if(rows.length>=2){const t=rows.reduce((a,x)=>a+x[1],0);T.push({ico:"🔁",h:`Abonnements : ${eur(t*12)} par an`,b:rows.map(([f,a])=>`${esc(f)} : ${eur(a)} / mois`).join("<br>"),
+   a:`Piste : pour chacun, demandez-vous « l'ai-je utilisé ce mois-ci ? ». Un abonnement inutile de 10 € coûte 120 € par an.`,save:0})} }
+ // 7. Enveloppes à sec & objectifs
+ {const L=lastMonth(),neg=S.g.pot.filter(p=>!S.nobal.includes(p)&&live(p,L)).map(p=>[p,soldePot(L,p)]).filter(x=>x[1]<-1);
+  if(neg.length)T.push({ico:"✉️",h:"Enveloppes dans le rouge",b:neg.map(([p,x])=>`<b>${esc(p)}</b> : ${eur(x)} fin ${MOIS[L].toLowerCase()}`).join("<br>"),a:`Piste : augmenter le versement mensuel de ces enveloppes, ou y virer le surplus d'un mois favorable.`,save:0})}
+ {const L=lastMonth(),bad=[];S.goals.forEach(g=>{const sol=g.lines.reduce((a,x)=>a+soldeSav(L,x),0),miss=Math.max(0,g.t-sol),left=Math.max(0,(g.y*12+g.m)-(S.year*12+L));if(!miss||!left)return;
+   const vs=ALL.slice(0,L+1).reduce((a,k)=>a+g.lines.reduce((b,x)=>b+v(k,"sav",x),0),0),sol0=g.lines.reduce((a,x)=>a+soldeSav(0,x),0),av=(vs===0&&L>0)?(sol-sol0)/L:vs/(L+1),need=miss/left;
+   if(av<need-1)bad.push([g.name,need-av,MOIS[g.m].toLowerCase()+" "+g.y])});
+  if(bad.length)T.push({ico:"🎯",h:"Objectifs en retard",b:bad.map(([nm,x,w])=>`<b>${esc(nm)}</b> (pour ${w}) : il manque ${eur(x)} par mois`).join("<br>"),a:`Piste : ajuster le versement d'épargne correspondant, ou repousser l'échéance dans l'onglet Objectifs.`,save:0})}
+ return{n,T,H}}
+function tipsPage(){const{n,T,H}=tipsList();
+ if(n<3)return`<h2 style="margin:0 0 10px">Conseils d'épargne</h2><div class="card"><p class="note" style="margin:0">Pas encore assez d'historique : il faut au moins <b>3 mois complets</b> de données (revenus et dépenses) pour calculer des pistes fiables. Vous en avez ${n}. Importez ou saisissez les mois précédents (Réglages › Application), puis revenez ici.</p></div>`;
+ const f=H[0],l=H[H.length-1],sv=T.reduce((a,t)=>a+(t.save||0),0);
+ return`<h2 style="margin:0 0 4px">Conseils d'épargne</h2><p class="note" style="margin:0 0 10px">Calculés sur vos <b>${n} mois complets</b> (${MC[f.m].toLowerCase()} ${f.y} → ${MC[l.m].toLowerCase()} ${l.y}). Ce sont des pistes tirées de vos propres chiffres, pas des conseils financiers personnalisés.</p>
+ <div class="grid">${T.map(t=>`<div class="card"><h2>${t.ico} ${t.h}</h2><p class="note" style="margin:0;color:var(--txt,inherit)">${t.b}</p><div class="hl">${t.a}</div></div>`).join("")}
+ ${T.length<2?`<div class="card"><p class="note" style="margin:0">Rien d'autre à signaler pour l'instant : vos dépenses sont stables.</p></div>`:""}</div>`}
 // ───────── Objectifs ─────────
 function goalChart(g,L,sol,proj){
  const E=Math.max(L+1,(g.y*12+g.m)-S.year*12),W=340,H=170,pl=44,pr=14,pt=14,pb=26;
