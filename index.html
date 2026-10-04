@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mon budget</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#f2f5f8" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#10161d" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f4f9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0e15" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Budget">
@@ -15,8 +15,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>try{if(localStorage.getItem("budget_app_v1_lock"))document.documentElement.classList.add("locked")}catch(e){}</script>
 <style>
-:root{--bg:#f2f5f8;--card:#fff;--ink:#1c2733;--mut:#6b7886;--line:#dde3ea;--inc:#1f9d6b;--exp:#e2572b;--sav:#2b6fdc;--env:#c58a1b}
-@media(prefers-color-scheme:dark){:root{--bg:#10161d;--card:#18212b;--ink:#e8eef4;--mut:#93a1b0;--line:#2a3643}}
+:root{--bg:#f4f4f9;--card:#fff;--ink:#17171f;--mut:#6a6a7c;--line:#e6e6ef;--field:#eeeef6;--inc:#0fae84;--exp:#ff5a4d;--sav:#6a4cf0;--env:#f2a30f;--brand:#4a3fd8;--hero:#221d5c;--herotxt:#f4f3ff;--neg:#ff9b8e;--hx-exp:#ff7b6e;--hx-sav:#a597ff;--hx-env:#ffc94d;--hx-rest:#45e3b5;--num:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI Variable Display",system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root{--bg:#0e0e15;--card:#181824;--ink:#efeff7;--mut:#9393a8;--line:#27273a;--field:#202030;--inc:#2fd4a6;--exp:#ff7566;--sav:#9486ff;--env:#ffb938;--brand:#b4acff;--hero:#e9e7ff;--herotxt:#1b1750;--neg:#d4382a;--hx-exp:#ff5a4d;--hx-sav:#5a43e6;--hx-env:#f0a000;--hx-rest:#0fae84}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 header{padding:20px 16px 8px;max-width:1000px;margin:auto}
@@ -70,6 +70,60 @@ input.ren{flex:1;min-width:0}.mv{display:flex;flex:none}
 .chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .mbox{background:var(--card);color:var(--ink);border-radius:12px;padding:18px;max-width:420px;width:100%}
+
+/* ───── Interface moderne ───── */
+body{font-size:15px;-webkit-font-smoothing:antialiased}
+header{padding:max(18px,env(safe-area-inset-top)) 18px 4px}
+h1{font:700 22px/1.15 var(--num);letter-spacing:-.02em}
+nav#nav{padding:8px 18px 12px;gap:6px;scrollbar-width:none;background:linear-gradient(var(--bg) 75%,transparent)}
+nav#nav::-webkit-scrollbar{display:none}
+nav#nav button{border:0;background:transparent;color:var(--mut);padding:8px 12px;border-radius:12px;font-weight:600}
+nav#nav button.on{background:var(--hero);color:var(--herotxt)}
+main{padding:0 16px calc(104px + env(safe-area-inset-bottom))}
+.card,.kpi{border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px}
+h2{font:700 16px/1.2 var(--num);margin:0 0 10px;letter-spacing:-.01em}
+.card>h2::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--line);margin-right:9px;vertical-align:1px}
+.card.inc>h2::before{background:var(--inc)}.card.exp>h2::before{background:var(--exp)}.card.sav>h2::before{background:var(--sav)}.card.env>h2::before{background:var(--env)}
+input,select{background:var(--field);border:1px solid transparent;border-radius:12px;padding:8px 10px}
+input:focus,select:focus{border-color:var(--sav);outline:0;background:var(--card)}
+.row{border-bottom:1px solid var(--line);padding:7px 0}
+.row>input[type=number]{font-variant-numeric:tabular-nums;width:108px;padding:8px 8px}
+.add button,.addcat button.pri,.btns button,.addcat button,.cp{border-radius:12px}
+.add button{font-weight:600}
+.btns button,.addcat button,.cp{background:var(--field);border-color:transparent;font-weight:600}
+.pay{border-radius:10px;background:var(--field);border-color:transparent}
+.bar{height:10px;border-radius:6px;background:var(--field)}
+.hl{background:var(--field);border-radius:14px}
+.chip{background:var(--field);border-color:transparent}
+.mbox{border-radius:22px}
+/* Bilan du mois */
+.bilan{margin-bottom:14px}
+.kpi,.kpi.inc,.kpi.exp,.kpi.sav,.kpi.env{border-top:1px solid var(--line)}
+.two.fx input{width:88px;padding:8px 6px;font-size:14px}
+.hero{background:var(--hero);color:var(--herotxt);border-radius:26px;padding:20px 18px 18px;margin-bottom:10px}
+.hero small{display:block;opacity:.7;font-weight:600}
+.hero .big{display:block;font:700 40px/1.1 var(--num);letter-spacing:-.03em;margin:4px 0 14px;font-variant-numeric:tabular-nums}
+.hero .big.neg{color:var(--neg)}
+.stack{display:flex;gap:3px;height:12px}
+.stack i{display:block;border-radius:6px;min-width:6px}
+.stack i.exp{background:var(--hx-exp)}.stack i.sav{background:var(--hx-sav)}.stack i.env{background:var(--hx-env)}.stack i.rest{background:var(--hx-rest)}
+.stack.empty i{background:rgba(255,255,255,.18)}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:720px){.tiles{grid-template-columns:repeat(4,1fr)}.hero .big{font-size:48px}}
+.tile{display:block;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:13px 14px;width:100%}
+button.tile{cursor:pointer}button.tile:active{transform:scale(.98)}
+.tile small{display:flex;align-items:center;gap:7px;color:var(--mut);font-weight:600}
+.tile small::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
+button.tile small::after{content:"›";margin-left:auto;font-size:18px;line-height:1}
+.tile b{display:block;font:700 20px/1.2 var(--num);margin-top:4px;font-variant-numeric:tabular-nums}
+.tile.inc{--c:var(--inc)}.tile.exp{--c:var(--exp)}.tile.sav{--c:var(--sav)}.tile.env{--c:var(--env)}
+/* Barre d'onglets */
+#tabs{max-width:none;margin:0;overflow:visible;top:auto;position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;gap:4px;padding:8px 12px calc(8px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--bg) 82%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+#tabs button{flex:1;max-width:150px;display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;color:var(--mut);font:600 11px/1 inherit;font-family:inherit;padding:6px 4px;border-radius:14px;cursor:pointer}
+#tabs button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tabs button.on{color:var(--brand);background:var(--field)}
+html.locked #tabs{display:none}
+footer{margin-bottom:70px}
 html.locked header,html.locked nav,html.locked main,html.locked footer{display:none}
 #lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
 .lbox{width:100%;max-width:320px;text-align:center}
@@ -96,8 +150,9 @@ html.locked header,html.locked nav,html.locked main,html.locked footer{display:n
 <noscript><p style="padding:20px">Cette application nécessite JavaScript.</p></noscript>
 <script>window.addEventListener("error",function(e){var a=document.getElementById("app");if(a&&!a.innerHTML.trim())a.innerHTML='<div style="padding:16px;margin:16px;border:1px solid #e2572b;border-radius:12px;font:15px system-ui">L\'application n\'a pas pu démarrer.<br><small>'+String(e.message||e.error)+'</small></div>'});</script>
 <header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><button id="cloud" class="chip" data-act="cloud" hidden></button></header>
-<nav id="nav" aria-label="Navigation"></nav>
+<nav id="nav" aria-label="Mois"></nav>
 <main id="app"></main>
+<nav id="tabs" aria-label="Navigation principale"></nav>
 <footer style="max-width:1000px;margin:auto;padding:0 16px 28px;text-align:center"><a href="privacy.html" style="color:var(--mut);font-size:13px">Confidentialité</a></footer>
 <script>
 // ───────── Stockage (navigateur) ─────────
@@ -152,8 +207,12 @@ const none=g=>S.g[g].length?"":`<p class="note">Aucune ligne : ajoutez-en une ci
 // ───────── Navigation ─────────
 const now=new Date();
 let cur=now.getFullYear()===S.year?now.getMonth():(now.getFullYear()<S.year?0:"an");
-function nav(){document.getElementById("nav").innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("")+
- [["an","Vue annuelle"],["obj","Objectifs"],["set","⚙ Réglages"]].map(([k,l])=>`<button data-act="go" data-v="${k}" class="${cur===k?"on":""}">${l}</button>`).join("")}
+let lastM=typeof cur==="number"?cur:0;
+const ICO={m:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>',an:'<svg viewBox="0 0 24 24"><path d="M5 20V11M12 20V5M19 20v-7"/></svg>',obj:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8"/></svg>',set:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'};
+function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementById("nav");
+ n.hidden=typeof cur!=="number";
+ n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1;
 function go(x){editTx=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
@@ -164,8 +223,11 @@ function draw(){const y=scrollY,app=document.getElementById("app");
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync()}
 // ───────── Vue d'un mois ─────────
-function kpis(T,link){const k=(c,id,h)=>link?`<button type="button" class="kpi lnk ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="kpi ${c}">${h}</div>`;
- return`<div class="kpis">${k("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${k("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${k("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${k("env","pot",`<small>Enveloppes versées</small><b>${eur(T.p)}</b>`)}<div class="kpi"><small>Reste${T.c?" (report inclus)":""}</small><b>${eur(T.r)}</b></div></div>`}
+function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
+ const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
+ const bar=all>0?`<div class="stack" role="img" aria-label="Répartition des revenus">${[["exp",T.d],["sav",T.s],["env",T.p],["rest",rest]].filter(x=>x[1]>0).map(([c,x])=>`<i class="${c}" style="width:${w(x)}"></i>`).join("")}</div>`:`<div class="stack empty"><i style="width:100%"></i></div>`;
+ return`<div class="bilan"><div class="hero"><small>${T.r<0?"Dépassement":"Reste"}${T.c?" · report inclus":""}</small><span class="big${T.r<0?" neg":""}">${eur(T.r)}</span>${bar}</div>
+ <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
  return hello+remind()+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
