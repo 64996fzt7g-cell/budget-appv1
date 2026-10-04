@@ -65,12 +65,16 @@ details{margin-top:10px}summary{cursor:pointer;color:var(--mut)}
 .btns button.danger{color:var(--exp)}
 input.ren{flex:1;min-width:0}.mv{display:flex;flex:none}
 .chk{display:flex;align-items:center;gap:8px;padding:4px 0}.chk input{width:auto}
+[hidden]{display:none!important}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.mbox{background:var(--card);color:var(--ink);border-radius:12px;padding:18px;max-width:420px;width:100%}
 </style>
 </head>
 <body>
 <noscript><p style="padding:20px">Cette application nécessite JavaScript.</p></noscript>
 <script>window.addEventListener("error",function(e){var a=document.getElementById("app");if(a&&!a.innerHTML.trim())a.innerHTML='<div style="padding:16px;margin:16px;border:1px solid #e2572b;border-radius:12px;font:15px system-ui">L\'application n\'a pas pu démarrer.<br><small>'+String(e.message||e.error)+'</small></div>'});</script>
-<header><h1 id="ttl">Mon budget</h1></header>
+<header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><button id="cloud" class="chip" data-act="cloud" hidden></button></header>
 <nav id="nav" aria-label="Navigation"></nav>
 <main id="app"></main>
 <script>
@@ -78,10 +82,12 @@ input.ren{flex:1;min-width:0}.mv{display:flex;flex:none}
 let memOnly=false;
 const store=(()=>{try{const t="__t";localStorage.setItem(t,"1");localStorage.removeItem(t);return localStorage}catch(e){memOnly=true;const m={};return{getItem:k=>k in m?m[k]:null,setItem:(k,x)=>{m[k]=String(x)},removeItem:k=>{delete m[k]}}}})();
 const KEY="budget_app_v1";
+// Synchronisation Google Drive : collez ici votre identifiant client Google (voir GUIDE-SYNC.md). Laissez vide pour désactiver.
+const GOOGLE_CLIENT_ID="";
 const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
@@ -89,7 +95,8 @@ function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o)
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
  ["tx","ret","goals"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
 let S;try{S=normalize(JSON.parse(store.getItem(KEY)||"null"))}catch(e){S=DEF()}
-const save=()=>{try{store.setItem(KEY,JSON.stringify(S))}catch(e){}};
+function save(){S.updated=Date.now();try{store.setItem(KEY,JSON.stringify(S))}catch(e){}
+ if(!getMeta().since)setMeta({since:Date.now()});scheduleSync()}
 // ───────── Outils ─────────
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const clean=s=>String(s||"").replace(/[|<>"]/g,"").trim().slice(0,40);
@@ -132,13 +139,13 @@ function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=cur==="an"?year():cur==="obj"?goalsPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
- document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y)}
+ document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync()}
 // ───────── Vue d'un mois ─────────
 function kpis(T,link){const k=(c,id,h)=>link?`<button type="button" class="kpi lnk ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="kpi ${c}">${h}</div>`;
  return`<div class="kpis">${k("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${k("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${k("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${k("env","pot",`<small>Enveloppes versées</small><b>${eur(T.p)}</b>`)}<div class="kpi"><small>Reste${T.c?" (report inclus)":""}</small><b>${eur(T.r)}</b></div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
- return hello+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
+ return hello+remind()+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
 const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${S.g.inc.map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
 const fixPre=m=>S.g.fix.reduce((a,n)=>a+pre(m,n),0);
@@ -239,9 +246,10 @@ function settings(){
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label></div>
  <p class="note" style="margin:0 0 10px">Renommez une ligne en modifiant son nom, changez l'ordre avec ▲▼, supprimez avec ✕ (ses montants sont alors supprimés). Les noms doivent être différents.</p>
  <div class="grid">${["inc","fix","env","pot","sav"].map(grp).join("")}</div>
- <div class="card"><h2>Mes données</h2><p class="note" style="margin-top:0">Vos données restent dans ce navigateur, sur cet appareil. Exportez-les pour les sauvegarder ou les transférer sur un autre appareil.</p>
- <div class="btns"><button data-act="exp">Exporter (JSON)</button><button data-act="imp">Importer (JSON)</button><button class="danger" data-act="wipe">Tout effacer</button></div>
- <input id="imp" type="file" accept=".json,application/json" hidden></div>`}
+ <div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>
+ <div class="card"><h2>iCloud Drive / Fichiers</h2><p class="note" style="margin-top:0">Pour garder une copie dans iCloud : touchez « Enregistrer dans Fichiers », puis choisissez iCloud Drive. Cette copie n'est pas automatique, refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier » et choisissez ce fichier.${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
+ <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
+ <div class="card"><h2>Mes données</h2><p class="note" style="margin-top:0">Vos données restent dans ce navigateur, sur cet appareil, sauf si vous activez la synchronisation Google Drive.</p><div class="btns"><button data-act="exp">Exporter (JSON)</button><button class="danger" data-act="wipe">Tout effacer</button></div></div>`}
 // ───────── Actions ─────────
 const exists=n=>S.g.inc.concat(S.g.fix,S.g.env,S.g.pot,S.g.sav).some(x=>x.toLowerCase()===n.toLowerCase());
 function addLine(g,raw){const n=clean(raw);if(!n)return;if(exists(n)){alert("Ce nom existe déjà.");return}S.g[g].push(n);save();draw()}
@@ -259,10 +267,10 @@ function moveLine(g,i,d){const a=S.g[g],j=i+d;if(j<0||j>=a.length)return;[a[i],a
 function saveGoal(id,f){const fd=new FormData(f),p=String(fd.get("month")||"").split("-");if(p.length<2)return;
  const g={id:id==="new"?String(Date.now()):id,name:clean(fd.get("name"))||"Objectif",t:+fd.get("t")||0,y:+p[0],m:+p[1]-1,lines:fd.getAll("l")};
  const i=S.goals.findIndex(x=>x.id===id);if(i>=0)S.goals[i]=g;else S.goals.push(g);save();draw()}
-function exportJson(){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
+function exportJson(){setMeta({lastBackup:Date.now()});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
 function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=new FileReader();
  r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||typeof o!=="object"||!o.g||!o.m)throw 0;if(!confirm("Remplacer les données actuelles par celles du fichier ?"))return;
-  store.setItem(KEY,JSON.stringify(normalize(o)));location.reload()}catch(e){alert("Fichier invalide : choisissez un export JSON de cette application.")}};r.readAsText(f)}
+  const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(nn));location.reload()}catch(e){alert("Fichier invalide : choisissez un export JSON de cette application.")}};r.readAsText(f)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const d=b.dataset,a=d.act;
  if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
  else if(a==="sec")goSec(d.id);
@@ -275,8 +283,13 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="down")moveLine(d.g,+d.i,1);
  else if(a==="delgoal"){if(confirm("Supprimer cet objectif ?")){S.goals=S.goals.filter(x=>x.id!==d.id);save();draw()}}
  else if(a==="exp")exportJson();
+ else if(a==="files")saveToFiles();
+ else if(a==="gconnect")gToken().then(()=>{setMeta({gd:true,base:0});syncNow(true)}).catch(gFail);
+ else if(a==="gsync"){if(tokenValid())syncNow(true);else connectThenSync()}
+ else if(a==="gdisc"){if(confirm("Se déconnecter de Google Drive ? La copie déjà présente dans votre Drive n'est pas supprimée."))gDisconnect()}
+ else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy")go("set");else syncNow(true)}
  else if(a==="imp")document.getElementById("imp").click();
- else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord.")){store.removeItem(KEY);location.reload()}}});
+ else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);location.reload()}}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  if(t.id==="imp")importJson(t);
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
@@ -290,8 +303,95 @@ document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.fo
  else if(d.form==="addtx"){S.tx.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="addret"){S.ret.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="goal")saveGoal(d.id,f)});
+// ───────── Sauvegarde & synchronisation ─────────
+const MK=KEY+"_meta",SCOPE="https://www.googleapis.com/auth/drive.appdata",FN="budget-sync.json";
+const DR="https://www.googleapis.com/drive/v3/files",UP="https://www.googleapis.com/upload/drive/v3/files";
+let gState="idle",gMsg="",gBusy=false,gAgain=false,gTimer;
+function getMeta(){try{return JSON.parse(store.getItem(MK)||"{}")||{}}catch(e){return{}}}
+function setMeta(p){try{store.setItem(MK,JSON.stringify(Object.assign(getMeta(),p)))}catch(e){}}
+const fmtDT=ms=>new Date(ms).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"});
+const tokenValid=()=>{const m=getMeta();return !!m.tok&&Date.now()<(m.exp||0)-60000};
+function gSet(st,msg){gState=st;gMsg=msg||"";renderSync()}
+function gFail(e){gSet(e&&e.message==="offline"?"err":"auth",e&&e.message==="offline"?"Hors connexion.":"Connexion à Google impossible (fenêtre bloquée ou refusée). Réessayez.")}
+function connectThenSync(){gToken().then(()=>syncNow(true)).catch(gFail)}
+function loadGIS(){return new Promise((res,rej)=>{if(window.google&&google.accounts&&google.accounts.oauth2)return res();
+ const t=document.getElementById("gis");if(t){t.addEventListener("load",()=>res());t.addEventListener("error",()=>rej(new Error("offline")));return}
+ const e=document.createElement("script");e.id="gis";e.src="https://accounts.google.com/gsi/client";e.onload=()=>res();e.onerror=()=>{e.remove();rej(new Error("offline"))};document.head.appendChild(e)})}
+function gToken(){if(tokenValid())return Promise.resolve(getMeta().tok);
+ return loadGIS().then(()=>new Promise((res,rej)=>{
+  const c=google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:SCOPE,
+   callback:r=>{if(!r||r.error)return rej(new Error("auth"));setMeta({tok:r.access_token,exp:Date.now()+(+r.expires_in||3600)*1000});res(r.access_token)},
+   error_callback:()=>rej(new Error("auth"))});
+  c.requestAccessToken({prompt:""})}))}
+async function gfetch(url,opt){const t=await gToken();
+ const r=await fetch(url,Object.assign({},opt,{headers:Object.assign({Authorization:"Bearer "+t},(opt||{}).headers||{})}));
+ if(r.status===401){setMeta({tok:"",exp:0});throw new Error("auth")}
+ if(!r.ok)throw new Error("Google Drive a répondu "+r.status+".");return r}
+async function gFind(){const r=await gfetch(DR+"?spaces=appDataFolder&pageSize=1&fields="+encodeURIComponent("files(id,modifiedTime)")+"&q="+encodeURIComponent("name='"+FN+"' and trashed=false"));const j=await r.json();return j.files&&j.files[0]||null}
+async function gGet(id){return (await gfetch(DR+"/"+id+"?alt=media")).json()}
+async function gPut(id,body){
+ if(id){await gfetch(UP+"/"+id+"?uploadType=media",{method:"PATCH",headers:{"Content-Type":"application/json"},body});return id}
+ const bd="b"+Date.now(),meta=JSON.stringify({name:FN,parents:["appDataFolder"],mimeType:"application/json"});
+ const mp="--"+bd+"\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"+meta+"\r\n--"+bd+"\r\nContent-Type: application/json\r\n\r\n"+body+"\r\n--"+bd+"--";
+ const r=await gfetch(UP+"?uploadType=multipart&fields=id",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+bd},body:mp});return (await r.json()).id}
+function pull(R){S=normalize(R);try{store.setItem(KEY,JSON.stringify(S))}catch(e){}setMeta({base:S.updated||0});nav();draw()}
+function askConflict(L,R){return new Promise(res=>{const d=document.createElement("div");d.id="modal";d.setAttribute("role","dialog");d.setAttribute("aria-modal","true");
+ d.innerHTML=`<div class="mbox"><h2>Deux versions différentes</h2><p>Les données de cet appareil (modifiées le ${fmtDT(L)}) et celles de Google Drive (modifiées le ${fmtDT(R)}) ne sont pas les mêmes. Laquelle garder ? L'autre sera remplacée.</p><div class="btns"><button data-r="remote">Garder Google Drive</button><button data-r="local">Garder cet appareil</button><button data-r="later">Décider plus tard</button></div></div>`;
+ d.addEventListener("click",e=>{const b=e.target.closest("[data-r]");if(!b)return;d.remove();res(b.dataset.r)});document.body.appendChild(d);d.querySelector("button").focus()})}
+async function syncNow(manual){
+ if(!getMeta().gd||!GOOGLE_CLIENT_ID)return;
+ if(gBusy){gAgain=true;return}
+ if(!manual&&!tokenValid()){gSet("auth","Reconnexion à Google nécessaire : touchez ☁.");return}
+ if(!navigator.onLine){gSet("err","Hors connexion : la synchronisation reprendra plus tard.");return}
+ gBusy=true;gSet("busy","Synchronisation…");
+ try{
+  const L=S.updated||0,base=getMeta().base||0,snap=JSON.stringify(S),f=await gFind();
+  if(!f){if(L){await gPut(null,snap);setMeta({base:L})}}
+  else{
+   const R=await gGet(f.id);if(!R||typeof R!=="object"||!R.g||!R.m)throw new Error("Le fichier sur Google Drive est illisible : il n'a pas été modifié.");
+   const Rt=R.updated||0;
+   if(Rt===L)setMeta({base:L});
+   else if(!L||(L===base&&Rt>base))pull(R);
+   else if(Rt===base&&L>base){await gPut(f.id,snap);setMeta({base:L})}
+   else{
+    gSet("conflict","Deux versions différentes : choisissez laquelle garder.");
+    const c=await askConflict(L,Rt);
+    if(c==="remote")pull(R);
+    else if(c==="local"){S.updated=Math.max(L,Rt)+1;try{store.setItem(KEY,JSON.stringify(S))}catch(e){}await gPut(f.id,JSON.stringify(S));setMeta({base:S.updated})}
+    else{gSet("conflict","Conflit non résolu : touchez ☁ pour choisir.");return}
+   }}
+  setMeta({lastSync:Date.now()});gSet("ok","");
+ }catch(e){const m=e&&e.message;
+  if(m==="auth")gSet("auth","Reconnexion à Google nécessaire : touchez ☁.");
+  else if(m==="offline"||!navigator.onLine)gSet("err","Hors connexion : la synchronisation reprendra plus tard.");
+  else gSet("err",m||"Erreur de synchronisation.")}
+ finally{gBusy=false}
+ if(gAgain){gAgain=false;scheduleSync(true)}}
+function scheduleSync(now){if(!getMeta().gd||!GOOGLE_CLIENT_ID)return;clearTimeout(gTimer);
+ if(!tokenValid()){gSet("auth","Modifications en attente : touchez ☁ pour vous reconnecter à Google.");return}
+ gTimer=setTimeout(()=>syncNow(false),now?300:4000)}
+function gDisconnect(){const m=getMeta();try{if(m.tok&&window.google&&google.accounts)google.accounts.oauth2.revoke(m.tok,()=>{})}catch(e){}
+ setMeta({gd:false,tok:"",exp:0,base:0,lastSync:0});clearTimeout(gTimer);gSet("idle","")}
+function syncBox(){const m=getMeta(),msg=gMsg?`<br><b>${esc(gMsg)}</b>`:"";
+ if(!GOOGLE_CLIENT_ID)return`<p class="note" style="margin-top:0">La synchronisation Google Drive n'est pas activée dans cette version (identifiant Google non renseigné dans index.html).</p>`;
+ if(!m.gd)return`<p class="note" style="margin-top:0">Gardez une copie de vos données dans votre Google Drive et retrouvez-les sur tous vos appareils. Elles sont stockées dans un dossier réservé à cette application, inaccessible aux autres applications.${msg}</p><div class="btns"><button data-act="gconnect">Se connecter à Google Drive</button></div>`;
+ return`<p class="note" style="margin-top:0">✓ Google Drive connecté.${m.lastSync?" Dernière synchronisation : "+fmtDT(m.lastSync)+".":""}${msg}</p><div class="btns"><button data-act="gsync">Synchroniser maintenant</button><button data-act="gdisc">Se déconnecter</button></div><p class="note">La synchronisation se fait à l'ouverture de l'application et après chaque modification, tant que la connexion Google est valide (environ une heure). Ensuite, un appui sur ☁ la rétablit.</p>`}
+function renderSync(){const m=getMeta(),c=document.getElementById("cloud");
+ if(c){if(m.gd&&GOOGLE_CLIENT_ID){c.hidden=false;c.textContent=({busy:"☁ Synchro…",ok:"☁ À jour",auth:"☁ Reconnecter",err:"☁ Erreur",conflict:"☁ Conflit"})[gState]||"☁"}else c.hidden=true}
+ const b=document.getElementById("syncbox");if(b)b.innerHTML=syncBox()}
+async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".json",blob=new Blob([JSON.stringify(S)],{type:"application/json"});
+ try{const file=new File([blob],name,{type:"application/json"});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});setMeta({lastBackup:Date.now()});draw();return}}
+ catch(e){if(e&&e.name==="AbortError")return}
+ const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setMeta({lastBackup:Date.now()});draw()}
+function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
+ const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
+ return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="go" data-v="set" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
 // ───────── Démarrage ─────────
 nav();nav2();draw();
+if(getMeta().gd&&GOOGLE_CLIENT_ID){loadGIS().catch(()=>{});if(tokenValid())syncNow(false);else gSet("auth","Reconnexion à Google nécessaire : touchez ☁.")}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&getMeta().gd&&tokenValid())syncNow(false)});
+window.addEventListener("online",()=>{if(getMeta().gd&&tokenValid())syncNow(false)});
 if(memOnly)document.getElementById("app").insertAdjacentHTML("afterbegin",'<div class="hl" style="margin-bottom:12px">Le stockage du navigateur est bloqué : vos saisies seront perdues à la fermeture. Ouvrez la page dans un onglet normal (hors navigation privée).</div>');
 if("serviceWorker" in navigator&&/^https?:$/.test(location.protocol))window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{})});
 </script>
