@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>try{if(localStorage.getItem("budget_app_v1_lock"))document.documentElement.classList.add("locked")}catch(e){}</script>
 <style>
 :root{--bg:#f2f5f8;--card:#fff;--ink:#1c2733;--mut:#6b7886;--line:#dde3ea;--inc:#1f9d6b;--exp:#e2572b;--sav:#2b6fdc;--env:#c58a1b}
 @media(prefers-color-scheme:dark){:root{--bg:#10161d;--card:#18212b;--ink:#e8eef4;--mut:#93a1b0;--line:#2a3643}}
@@ -69,6 +70,22 @@ input.ren{flex:1;min-width:0}.mv{display:flex;flex:none}
 .chip{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .mbox{background:var(--card);color:var(--ink);border-radius:12px;padding:18px;max-width:420px;width:100%}
+html.locked header,html.locked nav,html.locked main,html.locked footer{display:none}
+#lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+.lbox{width:100%;max-width:320px;text-align:center}
+.lbox h2{margin:0 0 4px;font-size:20px}
+.dots{display:flex;justify-content:center;gap:14px;margin:18px 0 6px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--mut);display:block}
+.dots i.on{background:var(--ink);border-color:var(--ink)}
+.lmsg{min-height:20px;margin:4px 0 10px;color:var(--exp);font-size:14px}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px;justify-content:center}
+.pad button{width:72px;height:72px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:26px;cursor:pointer}
+.pad button:active{background:var(--line)}
+.pad button:disabled{opacity:.4}
+.pad button.ghost{border-color:transparent;background:none;font-size:22px}
+.links{display:flex;justify-content:space-around;margin-top:18px}
+.links button{border:0;background:none;color:var(--mut);font:inherit;cursor:pointer;padding:6px}
+.shake{animation:shk .35s}@keyframes shk{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 </style>
 </head>
 <body>
@@ -77,6 +94,7 @@ input.ren{flex:1;min-width:0}.mv{display:flex;flex:none}
 <header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><button id="cloud" class="chip" data-act="cloud" hidden></button></header>
 <nav id="nav" aria-label="Navigation"></nav>
 <main id="app"></main>
+<footer style="max-width:1000px;margin:auto;padding:0 16px 28px;text-align:center"><a href="privacy.html" style="color:var(--mut);font-size:13px">Confidentialité</a></footer>
 <script>
 // ───────── Stockage (navigateur) ─────────
 let memOnly=false;
@@ -246,6 +264,7 @@ function settings(){
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label></div>
  <p class="note" style="margin:0 0 10px">Renommez une ligne en modifiant son nom, changez l'ordre avec ▲▼, supprimez avec ✕ (ses montants sont alors supprimés). Les noms doivent être différents.</p>
  <div class="grid">${["inc","fix","env","pot","sav"].map(grp).join("")}</div>
+ ${lockCard()}
  <div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>
  <div class="card"><h2>iCloud Drive / Fichiers</h2><p class="note" style="margin-top:0">Pour garder une copie dans iCloud : touchez « Enregistrer dans Fichiers », puis choisissez iCloud Drive. Cette copie n'est pas automatique, refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier » et choisissez ce fichier.${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
  <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
@@ -283,15 +302,22 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="down")moveLine(d.g,+d.i,1);
  else if(a==="delgoal"){if(confirm("Supprimer cet objectif ?")){S.goals=S.goals.filter(x=>x.id!==d.id);save();draw()}}
  else if(a==="exp")exportJson();
+ else if(a==="lockset")lockSetup(null);
+ else if(a==="lockchange")verifyThen("Changer le code",()=>lockSetup(getLock()));
+ else if(a==="lockoff")verifyThen("Désactiver le code",()=>{setLock(null);draw()});
+ else if(a==="locknow")lockNow();
+ else if(a==="bioon")enableBio().then(()=>draw()).catch(()=>alert("Face ID / Touch ID n'a pas pu être activé (indisponible sur cet appareil ou annulé)."));
+ else if(a==="biooff"){const L=getLock();L.bio=null;setLock(L);draw()}
  else if(a==="files")saveToFiles();
  else if(a==="gconnect")gToken().then(()=>{setMeta({gd:true,base:0});syncNow(true)}).catch(gFail);
  else if(a==="gsync"){if(tokenValid())syncNow(true);else connectThenSync()}
  else if(a==="gdisc"){if(confirm("Se déconnecter de Google Drive ? La copie déjà présente dans votre Drive n'est pas supprimée."))gDisconnect()}
  else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy")go("set");else syncNow(true)}
  else if(a==="imp")document.getElementById("imp").click();
- else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);location.reload()}}});
+ else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);store.removeItem(LK);location.reload()}}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  if(t.id==="imp")importJson(t);
+ else if(d.lockdelay!==undefined){const L=getLock();if(L){L.delay=+t.value;setLock(L)}}
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
@@ -387,8 +413,72 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
 function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
  const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
  return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="go" data-v="set" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
+// ───────── Verrouillage (code PIN / Face ID) ─────────
+const LK=KEY+"_lock";let hiddenAt=0,padKey=null;
+const canLock=()=>!!(window.crypto&&crypto.subtle&&crypto.subtle.deriveBits)&&!memOnly;
+function getLock(){try{return JSON.parse(store.getItem(LK)||"null")}catch(e){return null}}
+function setLock(L){if(L)store.setItem(LK,JSON.stringify(L));else store.removeItem(LK)}
+const isLocked=()=>document.documentElement.classList.contains("locked");
+const b64=u=>btoa(String.fromCharCode(...new Uint8Array(u)));
+const unb64=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0));
+const rnd=n=>crypto.getRandomValues(new Uint8Array(n));
+async function hashPin(pin,salt){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pin),"PBKDF2",false,["deriveBits"]);return b64(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt:unb64(salt),iterations:150000},k,256))}
+function waitLeft(){const L=getLock();return L&&L.until>Date.now()?Math.ceil((L.until-Date.now())/1000):0}
+async function checkPin(pin){const L=getLock(),w=waitLeft();if(w)return{error:"Trop d'essais.",wait:w};
+ if(await hashPin(pin,L.salt)===L.hash){L.fails=0;L.until=0;setLock(L);return null}
+ L.fails=(L.fails||0)+1;
+ if(L.fails>=5){const sec=Math.min(900,30*2**(L.fails-5));L.until=Date.now()+sec*1000;setLock(L);return{error:"Code incorrect.",wait:sec}}
+ setLock(L);const r=5-L.fails;return{error:"Code incorrect. "+r+" essai"+(r>1?"s":"")+" restant"+(r>1?"s":"")+"."}}
+function closePad(){const o=document.getElementById("lock");if(o)o.remove();if(padKey){document.removeEventListener("keydown",padKey);padKey=null}}
+function overlay(){closePad();const el=document.createElement("div");el.id="lock";el.setAttribute("role","dialog");el.setAttribute("aria-modal","true");document.body.appendChild(el);return el}
+function showPad(o){const el=overlay();let v="",busy=false,waiting=false,timer=null;
+ el.innerHTML=`<div class="lbox"><h2>${o.title}</h2><p class="note" style="margin:0">${o.sub||""}</p><div class="dots" aria-hidden="true">${"<i></i>".repeat(o.len)}</div><p class="lmsg" role="alert"></p><div class="pad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-d="${n}" aria-label="${n}">${n}</button>`).join("")}<button type="button" class="ghost" data-d="bio" aria-label="Face ID / Touch ID" style="${o.bio?"":"visibility:hidden"}">🔓</button><button type="button" data-d="0" aria-label="0">0</button><button type="button" class="ghost" data-d="del" aria-label="Effacer">⌫</button></div><div class="links">${o.forgot?`<button type="button" data-d="forgot">Code oublié ?</button>`:""}${o.cancel?`<button type="button" data-d="cancel">Annuler</button>`:""}</div></div>`;
+ const dots=[...el.querySelectorAll(".dots i")],msg=el.querySelector(".lmsg"),box=el.querySelector(".lbox");
+ const upd=()=>dots.forEach((d,i)=>d.classList.toggle("on",i<v.length));
+ const setWait=sec=>{waiting=true;let t=sec;const tick=()=>{if(t<=0){clearInterval(timer);waiting=false;msg.textContent="";return}msg.textContent="Trop d'essais. Réessayez dans "+(t>=60?Math.ceil(t/60)+" min":t+" s")+".";t--};tick();timer=setInterval(()=>{if(!document.getElementById("lock")){clearInterval(timer);return}tick()},1000)};
+ const submit=async()=>{busy=true;const r=await o.onPin(v);busy=false;if(r){v="";upd();box.classList.remove("shake");void box.offsetWidth;box.classList.add("shake");msg.textContent=r.error||"";if(r.wait)setWait(r.wait)}};
+ const press=d=>{if(d==="forgot")return forgotPin();if(d==="cancel")return closePad();if(d==="bio")return Promise.resolve(o.bio&&o.bio()).catch(()=>{});
+  if(busy||waiting)return;if(d==="del")v=v.slice(0,-1);else if(v.length<o.len)v+=d;upd();if(v.length===o.len)submit()};
+ el.addEventListener("click",e=>{const b=e.target.closest("[data-d]");if(b)press(b.dataset.d)});
+ padKey=e=>{if(/^\d$/.test(e.key))press(e.key);else if(e.key==="Backspace")press("del");else if(e.key==="Escape"&&o.cancel)press("cancel")};
+ document.addEventListener("keydown",padKey);
+ if(o.initialWait)setWait(o.initialWait)}
+function unlockApp(){document.documentElement.classList.remove("locked");closePad();hiddenAt=0;nav2()}
+function lockNow(){if(!getLock()||!canLock())return;document.documentElement.classList.add("locked");unlockView()}
+function forgotPin(){if(confirm("Code oublié : la seule solution est d'effacer toutes les données de cet appareil (vous pourrez ensuite restaurer une sauvegarde depuis un fichier). Continuer ?")){store.removeItem(KEY);store.removeItem(MK);store.removeItem(LK);location.reload()}}
+function unlockView(){const L=getLock();showPad({title:"🔒 Application verrouillée",sub:"Entrez votre code",len:L.len,forgot:true,initialWait:waitLeft(),
+ bio:L.bio?async()=>{if(await bioUnlock())unlockApp()}:null,
+ onPin:async p=>{const r=await checkPin(p);if(r)return r;unlockApp()}})}
+function verifyThen(title,fn){const L=getLock();showPad({title,sub:"Entrez votre code actuel",len:L.len,cancel:true,initialWait:waitLeft(),onPin:async p=>{const r=await checkPin(p);if(r)return r;closePad();fn()}})}
+function chooseLen(cb){const el=overlay();el.innerHTML=`<div class="lbox"><h2>Choisir un code</h2><p class="note" style="margin:0">Combien de chiffres ?</p><div class="btns" style="justify-content:center">${[4,5,6].map(n=>`<button type="button" data-n="${n}">${n} chiffres</button>`).join("")}</div><div class="links"><button type="button" data-c="1">Annuler</button></div></div>`;
+ el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.n)cb(+b.dataset.n);else closePad()})}
+function lockSetup(prev){chooseLen(len=>{
+ showPad({title:"Nouveau code",sub:"Choisissez un code à "+len+" chiffres",len,cancel:true,onPin:async p1=>{
+  showPad({title:"Confirmer le code",sub:"Saisissez-le une seconde fois",len,cancel:true,onPin:async p2=>{
+   if(p2!==p1)return{error:"Les deux codes sont différents. Réessayez."};
+   const salt=b64(rnd(16));
+   setLock({salt,hash:await hashPin(p1,salt),len,delay:prev?prev.delay:1,fails:0,until:0,bio:prev?prev.bio:null});
+   closePad();if(prev)draw();else offerBio()}})}})})}
+async function bioPossible(){try{return !!(window.PublicKeyCredential&&await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable())}catch(e){return false}}
+async function offerBio(){if(!await bioPossible()){draw();return}
+ const el=overlay();el.innerHTML=`<div class="lbox"><h2>Face ID / Touch ID</h2><p class="note">Déverrouiller l'application avec la reconnaissance de votre appareil, en plus du code ?</p><div class="btns" style="justify-content:center"><button type="button" data-y="1">Activer</button><button type="button" data-y="0">Plus tard</button></div></div>`;
+ el.addEventListener("click",async e=>{const b=e.target.closest("button");if(!b)return;if(b.dataset.y==="1"){try{await enableBio()}catch(x){alert("Face ID / Touch ID n'a pas pu être activé. Vous pourrez réessayer dans Réglages.")}}closePad();draw()})}
+async function enableBio(){const c=await navigator.credentials.create({publicKey:{challenge:rnd(32),rp:{name:"Mon budget"},user:{id:rnd(16),name:"budget",displayName:"Mon budget"},pubKeyCredParams:[{type:"public-key",alg:-7},{type:"public-key",alg:-257}],authenticatorSelection:{authenticatorAttachment:"platform",userVerification:"required",residentKey:"discouraged"},timeout:60000}});
+ const L=getLock();L.bio=b64(c.rawId);setLock(L);return true}
+async function bioUnlock(){const L=getLock();if(!L||!L.bio)return false;try{await navigator.credentials.get({publicKey:{challenge:rnd(32),allowCredentials:[{type:"public-key",id:unb64(L.bio)}],userVerification:"required",timeout:60000}});return true}catch(e){return false}}
+function lockCard(){
+ if(!canLock())return`<div class="card"><h2>Verrouillage</h2><p class="note" style="margin-top:0">Le verrouillage par code nécessite une connexion sécurisée (https) et un stockage local actif.</p></div>`;
+ const L=getLock();
+ if(!L)return`<div class="card"><h2>Verrouillage</h2><p class="note" style="margin-top:0">Protégez l'accès à l'application par un code (4 à 6 chiffres) et, si votre appareil le permet, par Face ID ou Touch ID.</p><div class="btns"><button data-act="lockset">Activer le code</button></div></div>`;
+ return`<div class="card"><h2>Verrouillage</h2><p class="note" style="margin-top:0">✓ Code activé. Il bloque l'accès à l'application mais ne chiffre pas vos données.</p>
+ <div class="row"><span>Verrouiller après</span><select data-lockdelay aria-label="Délai de verrouillage automatique">${[[0,"Immédiatement"],[1,"1 minute"],[5,"5 minutes"],[15,"15 minutes"]].map(([n,l])=>`<option value="${n}"${L.delay===n?" selected":""}>${l}</option>`).join("")}</select></div>
+ <div class="btns"><button data-act="locknow">Verrouiller maintenant</button>${L.bio?`<button data-act="biooff">Désactiver Face ID / Touch ID</button>`:`<button data-act="bioon">Activer Face ID / Touch ID</button>`}<button data-act="lockchange">Changer le code</button><button class="danger" data-act="lockoff">Désactiver le code</button></div></div>`}
+document.addEventListener("visibilitychange",()=>{const L=getLock();if(!L||!canLock())return;
+ if(document.hidden){hiddenAt=Date.now();if(L.delay===0&&!isLocked())lockNow()}
+ else if(hiddenAt&&!isLocked()&&Date.now()-hiddenAt>=L.delay*60000)lockNow()});
 // ───────── Démarrage ─────────
 nav();nav2();draw();
+if(getLock()){if(canLock()){document.documentElement.classList.add("locked");unlockView()}else document.documentElement.classList.remove("locked")}
 if(getMeta().gd&&GOOGLE_CLIENT_ID){loadGIS().catch(()=>{});if(tokenValid())syncNow(false);else gSet("auth","Reconnexion à Google nécessaire : touchez ☁.")}
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&getMeta().gd&&tokenValid())syncNow(false)});
 window.addEventListener("online",()=>{if(getMeta().gd&&tokenValid())syncNow(false)});

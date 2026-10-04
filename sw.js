@@ -1,8 +1,8 @@
 // Service worker : l'application fonctionne hors connexion.
 // Stratégie "réseau d'abord" : à chaque ouverture avec internet, la dernière version est chargée ;
 // sans internet, la dernière version mémorisée est utilisée.
-const CACHE = "budget-app-v2";
-const FILES = ["./", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+const CACHE = "budget-app-v4";
+const FILES = ["./", "manifest.webmanifest", "privacy.html", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(
