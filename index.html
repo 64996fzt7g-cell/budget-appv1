@@ -124,6 +124,14 @@ button.tile small::after{content:"›";margin-left:auto;font-size:18px;line-heig
 #tabs button.on{color:var(--brand);background:var(--field)}
 html.locked #tabs{display:none}
 footer{margin-bottom:70px}
+.hero details.proj{margin:14px 0 0;border-top:1px solid color-mix(in srgb,var(--herotxt) 22%,transparent);padding-top:10px}
+.hero details.proj>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;color:var(--herotxt);font-weight:600}
+.hero details.proj>summary::-webkit-details-marker{display:none}
+.hero details.proj>summary b{margin-left:auto;font:700 18px/1 var(--num);font-variant-numeric:tabular-nums}
+.hero details.proj>summary b.neg{color:var(--neg)}
+.hero details.proj>summary::after{content:"›";font-size:20px;line-height:1;opacity:.7;transition:transform .15s}
+.hero details.proj[open]>summary::after{transform:rotate(90deg)}
+.hero .pl div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px;opacity:.88}
 .seg{display:flex;gap:4px;background:var(--field);padding:4px;border-radius:16px;margin:2px 0 14px}
 .seg button{flex:1;border:0;background:none;color:var(--mut);font:600 14px/1 inherit;font-family:inherit;padding:11px 8px;border-radius:12px;cursor:pointer}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(20,20,40,.1)}
@@ -205,7 +213,7 @@ const retM=m=>S.ret.filter(t=>t.m===m).reduce((a,t)=>a+t.a,0);
 const op=(g,n)=>+(S.open[g+"|"+n])||0;
 const sum=(m,g)=>S.g[g].reduce((a,n)=>a+(g==="env"?spent(m,n):v(m,g,n)),0);
 const carry=m=>S.carry&&m>0?tot(m-1).r:0;
-const tot=m=>{const i=sum(m,"inc"),f=sum(m,"fix"),e=sum(m,"env"),s=sum(m,"sav"),p=sum(m,"pot"),c=carry(m);return{i,f,e,d:f+e,s,p,c,r:i+c-f-e-s-p}};
+const tot=m=>{const i=sum(m,"inc"),f=sum(m,"fix"),e=sum(m,"env"),s=sum(m,"sav"),p=sum(m,"pot"),c=carry(m);const fp=S.g.fix.reduce((a,n)=>a+Math.max(v(m,"fix",n),pre(m,n)),0),ep=S.g.env.reduce((a,n)=>a+Math.max(spent(m,n),v(m,"bud",n)),0);return{i,f,e,d:f+e,s,p,c,fp,ep,r:i+c-f-e-s-p,rf:i+c-fp-ep-s-p}};
 const soldeSav=(m,n)=>op("sav",n)+ALL.slice(0,m+1).reduce((a,k)=>a+v(k,"sav",n)+v(k,"adjsav",n)-retN(k,n),0);
 const soldePot=(m,n)=>op("pot",n)+ALL.slice(0,m+1).reduce((a,k)=>a+v(k,"pot",n)-spent(k,n)+v(k,"adjpot",n),0);
 const totSolde=m=>S.g.sav.reduce((a,n)=>a+soldeSav(m,n),0);
@@ -236,7 +244,9 @@ function draw(){const y=scrollY,app=document.getElementById("app");
 function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
  const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
  const bar=all>0?`<div class="stack" role="img" aria-label="Répartition des revenus">${[["exp",T.d],["sav",T.s],["env",T.p],["rest",rest]].filter(x=>x[1]>0).map(([c,x])=>`<i class="${c}" style="width:${w(x)}"></i>`).join("")}</div>`:`<div class="stack empty"><i style="width:100%"></i></div>`;
- return`<div class="bilan"><div class="hero"><small>${T.r<0?"Dépassement":"Reste"}${T.c?" · report inclus":""}</small><span class="big${T.r<0?" neg":""}">${eur(T.r)}</span>${bar}</div>
+ const mn=x=>"−\u202f"+eur(x);
+ const proj=`<details class="proj" data-id="proj"><summary><span>Reste final estimé</span><b class="${T.rf<0?"neg":""}">${eur(T.rf)}</b></summary><div class="pl"><div><span>Revenus${T.c?" + report":""}</span><span>${eur(T.i+T.c)}</span></div><div><span>Factures (prévu ou payé)</span><span>${mn(T.fp)}</span></div><div><span>Dépenses (réel ou budget)</span><span>${mn(T.ep)}</span></div><div><span>Enveloppes versées</span><span>${mn(T.p)}</span></div><div><span>Épargne versée</span><span>${mn(T.s)}</span></div></div></details>`;
+ return`<div class="bilan"><div class="hero"><small>${T.r<0?"Dépassement":"Reste actuel"}${T.c?" · report inclus":""}</small><span class="big${T.r<0?" neg":""}">${eur(T.r)}</span>${bar}${proj}</div>
  <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
