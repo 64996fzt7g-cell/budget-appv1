@@ -124,6 +124,7 @@ button.tile small::after{content:"›";margin-left:auto;font-size:18px;line-heig
 #tabs button.on{color:var(--brand);background:var(--field)}
 html.locked #tabs{display:none}
 footer{margin-bottom:70px}
+.row>input.due[type=number]{width:64px;text-align:center;padding:8px 4px}
 .hero details.proj{margin:14px 0 0;border-top:1px solid color-mix(in srgb,var(--herotxt) 22%,transparent);padding-top:10px}
 .hero details.proj>summary{display:flex;align-items:center;gap:8px;list-style:none;cursor:pointer;color:var(--herotxt);font-weight:600}
 .hero details.proj>summary::-webkit-details-marker{display:none}
@@ -182,7 +183,7 @@ const GOOGLE_CLIENT_ID="";
 const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
@@ -260,7 +261,7 @@ function fixCard(m){
  <div class="kpis"><div class="kpi"><small>Prévu</small><b>${eur(fixPre(m))}</b></div><div class="kpi exp"><small>Payé</small><b>${eur(sum(m,"fix"))}</b></div><div class="kpi"><small>Reste à sortir</small><b>${eur(fixRest(m))}</b></div></div>
  ${m>0?`<button type="button" class="cp" data-act="copyprev" data-m="${m}">Copier les prévus de ${MOIS[m-1].toLowerCase()}</button>`:""}
  <div class="row fh fx"><span>Facture</span><span>Prévu</span><span>Payé</span></div>
- ${S.g.fix.map(n=>{const p=pre(m,n),r=v(m,"fix",n),ok=p>0&&r>=p;return`<div class="row${ok?" ok":""}"><span>${ok?"✓ ":""}${esc(n)}</span><span class="two fx">${inp(m,"pre",n,p)}<button type="button" class="pay${ok?" on":""}" data-act="pay" data-m="${m}" data-n="${esc(n)}" title="${ok?"Annuler le paiement":"Valider le montant prévu"}" aria-label="${ok?"Annuler le paiement de":"Valider le prévu de"} ${esc(n)}"${p>0?"":" disabled"}>✓</button>${inp(m,"fix",n,r)}</span></div>`}).join("")}${none("fix")}${lineForm("fix")}</div>`}
+ ${S.g.fix.map(n=>{const p=pre(m,n),r=v(m,"fix",n),ok=p>0&&r>=p;return`<div class="row${ok?" ok":""}"><span>${ok?"✓ ":""}${esc(n)}${(S.due||{})[n]?`<small class="note"> · le ${S.due[n].day}</small>`:""}</span><span class="two fx">${inp(m,"pre",n,p)}<button type="button" class="pay${ok?" on":""}" data-act="pay" data-m="${m}" data-n="${esc(n)}" title="${ok?"Annuler le paiement":"Valider le montant prévu"}" aria-label="${ok?"Annuler le paiement de":"Valider le prévu de"} ${esc(n)}"${p>0?"":" disabled"}>✓</button>${inp(m,"fix",n,r)}</span></div>`}).join("")}${none("fix")}${lineForm("fix")}</div>`}
 function envCard(m){
  const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
  const opt=g=>S.g[g].map(n=>`<option>${esc(n)}</option>`).join("");
@@ -345,8 +346,8 @@ function goalsPage(){
 // ───────── Réglages ─────────
 let setTab="bud";
 function settings(){
- const rowsOf=g=>S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}"><span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("");
- const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].length} ligne${S.g[g].length>1?"s":""}</small></summary><div class="accb">${rowsOf(g)}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
+ const rowsOf=g=>S.g[g].map((n,i)=>`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}">${g==="fix"?`<input class="due" type="number" min="1" max="31" inputmode="numeric" placeholder="Jour" data-due="${esc(n)}" value="${(S.due||{})[n]?S.due[n].day:""}" aria-label="Jour de prélèvement de ${esc(n)}" title="Jour du prélèvement">`:""}<span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Supprimer">✕</button></span></div>`).join("");
+ const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].length} ligne${S.g[g].length>1?"s":""}</small></summary><div class="accb">${g==="fix"?`<p class="note" style="margin-top:0">Indiquez le <b>jour de prélèvement</b> de chaque facture : à cette date, le montant prévu est compté comme payé, sans rien valider. Vous n'avez qu'à corriger le « Payé » si le montant diffère.</p>`:""}${rowsOf(g)}${none(g)}${lineForm(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
  const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
@@ -369,7 +370,10 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  Object.keys(S.m).forEach(m=>{const o=S.m[m],out={};Object.keys(o).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)out[p+"|"+r]=o[k]});S.m[m]=out});
  const oo={};Object.keys(S.open).forEach(k=>{const[p,n]=key(k),r=fn(n);if(r!==null)oo[p+"|"+r]=S.open[k]});S.open=oo;
  ["tx","ret"].forEach(t=>{S[t]=S[t].map(x=>{const r=fn(x.c);return r===null?null:Object.assign({},x,{c:r})}).filter(Boolean)});
- S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
+ S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);
+ {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2;
+  const a2={};Object.keys(S.ap||{}).forEach(k=>{const i=k.indexOf("|"),r=fn(k.slice(i+1));if(r!==null)a2[k.slice(0,i)+"|"+r]=S.ap[k]});S.ap=a2}
+ S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
 function renameLine(g,old,raw){const n=clean(raw),i=S.g[g].indexOf(old);if(!n||n===old||i<0){draw();return}
  if(exists(n)&&n.toLowerCase()!==old.toLowerCase()){alert("Ce nom existe déjà.");draw();return}
  S.g[g][i]=n;remap(x=>x===old?n:x);save();draw()}
@@ -443,6 +447,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
  else if(d.bal!==undefined){S.nobal=S.nobal.filter(x=>x!==d.bal);if(!t.checked)S.nobal.push(d.bal);save();draw()}
+ else if(d.due!==undefined)setDue(d.due,t.value);
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
  else if(d.set==="title"){S.title=clean(t.value)||"Mon budget";save();draw()}
@@ -538,6 +543,26 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
 function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
  const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
  return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>.</div>`:""}
+// ───────── Prélèvement automatique des factures ─────────
+function autoPay(){
+ const now=new Date(),ny=now.getFullYear();let last=-1,today=0;
+ if(S.year<ny)last=11;else if(S.year===ny){last=now.getMonth();today=now.getDate()}
+ let ch=false;S.ap=S.ap||{};
+ Object.keys(S.due||{}).forEach(n=>{
+  if(!S.g.fix.includes(n))return;const dd=S.due[n];
+  for(let m=Math.max(0,dd.from|0);m<=last;m++){
+   const key=m+"|"+n;if(S.ap[key])continue;
+   const dim=new Date(S.year,m+1,0).getDate(),day=Math.min(dd.day,dim);
+   if(m===last&&S.year===ny&&day>today)continue;
+   const p=pre(m,n);if(!(p>0))continue;
+   S.ap[key]=1;ch=true;
+   const c=(S.m[m]||{})["fix|"+n];
+   if(c===undefined||c===null||c==="")M(m)["fix|"+n]=p}});
+ if(ch)save()}
+function setDue(n,val){const day=Math.round(+val);S.due=S.due||{};
+ if(!(day>=1&&day<=31))delete S.due[n];
+ else{const now=new Date();S.due[n]={day,from:S.due[n]?S.due[n].from:(S.year===now.getFullYear()?now.getMonth():0)}}
+ autoPay();save();draw()}
 // ───────── Dépenses récurrentes ─────────
 function genRec(){
  const now=new Date(),ny=now.getFullYear();let last=-1,today=0;
@@ -625,8 +650,8 @@ document.addEventListener("visibilitychange",()=>{const L=getLock();if(!L||!canL
  if(document.hidden){hiddenAt=Date.now();if(L.delay===0&&!isLocked())lockNow()}
  else if(hiddenAt&&!isLocked()&&Date.now()-hiddenAt>=L.delay*60000)lockNow()});
 // ───────── Démarrage ─────────
-genRec();
-document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length;genRec();if(S.tx.length!==n&&!isLocked())draw()}});
+genRec();autoPay();
+document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length,sg=JSON.stringify(S.ap);genRec();autoPay();if((S.tx.length!==n||JSON.stringify(S.ap)!==sg)&&!isLocked())draw()}});
 nav();nav2();draw();
 if(getLock()){if(canLock()){document.documentElement.classList.add("locked");unlockView()}else document.documentElement.classList.remove("locked")}
 if(getMeta().gd&&GOOGLE_CLIENT_ID){loadGIS().catch(()=>{});if(tokenValid())syncNow(false);else gSet("auth","Reconnexion à Google nécessaire : touchez ☁.")}
