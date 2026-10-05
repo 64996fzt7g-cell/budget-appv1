@@ -300,7 +300,7 @@ function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile 
  <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]))?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
- return hello+remind()+remCard(m)+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
+ return hello+remind()+remCard(m)+paceCard(m)+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
 const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${vis("inc",m).map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
 const fixPre=m=>S.g.fix.reduce((a,n)=>a+pre(m,n),0);
@@ -883,6 +883,23 @@ function remToast(){if(isLocked()||typeof cur!=="number")return;const it=remItem
 function remSet(){const L=S.g.fix.filter(n=>!S.end[n]);if(!L.length)return"";
  return`<div class="card"><h2>🔔 Rappels de factures</h2><p class="note" style="margin-top:0">Choisissez les factures à rappeler. Le rappel apparaît à l'ouverture de l'application (en bannière et en haut du mois en cours), à partir du nombre de jours choisi avant le <b>jour de prélèvement</b>, tant que la facture n'est pas payée. Une application web ne peut pas envoyer de notification quand elle est fermée.</p>
  ${L.map(n=>{const r=(S.rem||{})[n]||{},dd=(S.due||{})[n],ok=!!(dd&&dd.day);return`<div class="row"><label class="chk" style="padding:4px 0"><input type="checkbox" data-remon="${esc(n)}"${r.on&&ok?" checked":""}${ok?"":" disabled"}>${esc(n)}${ok?`<small class="note"> · le ${dd.day}</small>`:`<small class="note"> · indiquez d'abord le jour de prélèvement</small>`}</label>${r.on&&ok?`<select data-remd="${esc(n)}" aria-label="Délai du rappel pour ${esc(n)}">${REMD.map(([d,l])=>`<option value="${d}"${(r.days==null?3:r.days)===d?" selected":""}>${l}</option>`).join("")}</select>`:""}</div>`}).join("")}</div>`}
+// ───────── Vue « ce mois-ci » ─────────
+function paceCard(m){const n=new Date();if(S.year!==n.getFullYear()||m!==n.getMonth())return"";
+ const D=new Date(S.year,m+1,0).getDate(),t=n.getDate(),left=D-t+1,T=tot(m),e=sum(m,"env"),fr=fixRest(m),avail=T.r-fr;
+ let B=S.g.env.reduce((a,x)=>a+v(m,"bud",x),0),src="budget";
+ if(!(B>0)){let h=[];try{h=histo().slice(-6)}catch(x){}const ee=h.map(r=>Object.values(r.cat).reduce((a,x)=>a+x,0)).filter(x=>x>0);if(ee.length>=3){B=ee.reduce((a,x)=>a+x,0)/ee.length;src="moyenne"}else B=0}
+ const perDay=avail/left,cur=e/t,proj=t>=5?e/t*D:null,pr=proj!=null?avail-(proj-e):null;
+ let st="";
+ if(B>0){const exp=B*t/D,diff=e-exp,lab=src==="budget"?"le rythme de votre budget":"votre rythme habituel";
+  st=Math.abs(diff)<B*0.03?`🟢 Vous êtes pile dans ${lab}.`:diff<0?`🟢 Vous êtes en avance : <b>${eur(-diff)}</b> de moins que ${lab}.`:`🟠 Vous dépensez plus vite que ${lab} : <b>${eur(diff)}</b> de plus à cette date.`}
+ else st=`<span class="note">Renseignez des budgets de dépenses (ou saisissez 3 mois) pour comparer votre rythme.</span>`;
+ const w=x=>Math.max(0,Math.min(100,x)).toFixed(1)+"%";
+ return`<div class="card pace" style="margin:0 0 12px"><h2>📆 Ce mois-ci · ${t} ${MOIS[m].toLowerCase()}</h2>
+ <div class="kpis"><div class="kpi"><small>Jours restants</small><b>${left}</b></div><div class="kpi ${avail<0?"exp":"inc"}"><small>Disponible / jour</small><b>${avail<0?"−\u202f"+eur(-perDay):eur(perDay)}</b></div><div class="kpi"><small>Rythme actuel / jour</small><b>${eur(cur)}</b></div></div>
+ <div class="hl" style="margin-top:8px">${avail<0?`🔴 Plus rien de disponible : le reste est déjà <b>${eur(-avail)}</b> en dessous des factures à venir.`:st}</div>
+ <div class="cat" style="margin-top:10px"><div><span>Temps écoulé</span><span>${t} / ${D} jours</span></div><div class="bar"><i style="width:${w(t/D*100)};background:var(--mut)"></i></div></div>
+ ${B>0?`<div class="cat"><div><span>Dépenses du mois (hors factures)</span><span>${eur(e)} / ${eur(B)}</span></div><div class="bar"><i style="width:${w(e/B*100)};background:${e>B?"var(--exp)":e/B>t/D?"#f59e0b":"var(--inc)"}"></i></div></div>`:""}
+ <p class="note" style="margin:8px 0 0">Disponible = reste actuel (${eur(T.r)}) moins les factures encore à payer (${eur(fr)}).${pr!=null?` Au rythme actuel, il resterait environ <b>${eur(pr)}</b> en fin de mois.`:""}</p></div>`}
 // ───────── Alertes de budget ─────────
 const ALERTS={85:{c:"#16a34a",m:["Attention, le budget commence à fondre plus vite qu'une glace en plein été ! 🍦","On est à 85 % ! C'est le moment idéal pour activer le mode « sage décision ». 🧘‍♂️","Petit coup d'œil dans le rétroviseur : 85 % utilisé ! On lève légèrement le pied sur l'accélérateur ? 🚗","Bravo pour ta gestion jusqu'ici ! Mais gardons une petite réserve pour la fin du mois. 😉","Hop hop hop ! La zone jaune approche. Tout va bien, mais garde l'œil ouvert ! 🟡"]},
 90:{c:"#f59e0b",m:["Alerte douceur : 90 % atteints ! Tes cartes bleues ont besoin d'un petit câlin (et de repos). 💳💤","90 % ! C'est le moment officiellement déclaré des repas « vide-frigo » créatifs ! 🧀🥫","Houston, on approche des 100 % ! Mode économie d'énergie activé sur le portefeuille. 🚀","Il reste 10 % ! Rappel amical : l'eau du robinet et les promenades au parc sont 100 % gratuites ! 🌳","On retient son souffle ! Plus que 10 % de marge. Tu gères, ne lâche rien ! 💪"]},
