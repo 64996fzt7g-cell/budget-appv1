@@ -514,7 +514,8 @@ function settings(){
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label>
- <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="alert"${S.noalert?"":" checked"}> Alertes quand le budget du mois est consommé (85, 90 et 98 %)</label></div>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="alert"${S.noalert?"":" checked"}> Alertes quand le budget du mois est consommé (85, 90 et 98 %)</label>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="pace"${S.nopace?"":" checked"}> Afficher la vue « Ce mois-ci » en haut du mois en cours (jours restants, disponible par jour, rythme)</label></div>
  <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
  ${remSet()}
  ${recCard()}`;
@@ -655,6 +656,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
  else if(d.set==="alert"){S.noalert=!t.checked;save();draw()}
+ else if(d.set==="pace"){S.nopace=!t.checked;save();draw()}
  else if(d.set==="title"){S.title=clean(t.value)||"Mon budget";save();draw()}
  else if(d.set==="year"){S.year=Math.min(2100,Math.max(2000,+t.value||S.year));save();nav();draw()}});
 document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.form)return;e.preventDefault();const fd=new FormData(f);
@@ -884,7 +886,7 @@ function remSet(){const L=S.g.fix.filter(n=>!S.end[n]);if(!L.length)return"";
  return`<div class="card"><h2>🔔 Rappels de factures</h2><p class="note" style="margin-top:0">Choisissez les factures à rappeler. Le rappel apparaît à l'ouverture de l'application (en bannière et en haut du mois en cours), à partir du nombre de jours choisi avant le <b>jour de prélèvement</b>, tant que la facture n'est pas payée. Une application web ne peut pas envoyer de notification quand elle est fermée.</p>
  ${L.map(n=>{const r=(S.rem||{})[n]||{},dd=(S.due||{})[n],ok=!!(dd&&dd.day);return`<div class="row"><label class="chk" style="padding:4px 0"><input type="checkbox" data-remon="${esc(n)}"${r.on&&ok?" checked":""}${ok?"":" disabled"}>${esc(n)}${ok?`<small class="note"> · le ${dd.day}</small>`:`<small class="note"> · indiquez d'abord le jour de prélèvement</small>`}</label>${r.on&&ok?`<select data-remd="${esc(n)}" aria-label="Délai du rappel pour ${esc(n)}">${REMD.map(([d,l])=>`<option value="${d}"${(r.days==null?3:r.days)===d?" selected":""}>${l}</option>`).join("")}</select>`:""}</div>`}).join("")}</div>`}
 // ───────── Vue « ce mois-ci » ─────────
-function paceCard(m){const n=new Date();if(S.year!==n.getFullYear()||m!==n.getMonth())return"";
+function paceCard(m){const n=new Date();if(S.nopace||S.year!==n.getFullYear()||m!==n.getMonth())return"";
  const D=new Date(S.year,m+1,0).getDate(),t=n.getDate(),left=D-t+1,T=tot(m),e=sum(m,"env"),fr=fixRest(m),avail=T.r-fr;
  let B=S.g.env.reduce((a,x)=>a+v(m,"bud",x),0),src="budget";
  if(!(B>0)){let h=[];try{h=histo().slice(-6)}catch(x){}const ee=h.map(r=>Object.values(r.cat).reduce((a,x)=>a+x,0)).filter(x=>x>0);if(ee.length>=3){B=ee.reduce((a,x)=>a+x,0)/ee.length;src="moyenne"}else B=0}
