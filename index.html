@@ -52,6 +52,7 @@ input,select{border:1px solid var(--line);background:var(--bg);color:var(--ink);
 input.bud{width:100%;margin-top:5px;padding:5px 8px;font-size:13px}
 .note{color:var(--mut);font-size:13px;margin:8px 0 0}
 .hl{background:var(--bg);border-radius:8px;padding:10px;margin-top:10px}
+button.potlnk{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--env,var(--brand));text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
 .chart{display:flex;align-items:flex-end;gap:4px;height:140px}.chart div{flex:1;text-align:center;font-size:11px;color:var(--mut)}.chart i{display:block;margin-bottom:3px;border-radius:4px 4px 0 0;min-height:2px}
 .add{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:10px}
 .add button,.addcat button.pri{background:var(--exp);color:#fff;border:0;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
@@ -206,7 +207,7 @@ const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
 const YKEYS=["m","tx","ret","open","ap"];let YC={};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],rec:[],due:{},ap:{},yrs:{},end:{},
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],rec:[],due:{},ap:{},yrs:{},end:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
@@ -217,7 +218,7 @@ function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o)
  if(Array.isArray(o.rec))o.rec.forEach(r=>{if(r.fy==null){r.fy=o.year;r.skip=(r.skip||[]).map(x=>x<100?o.year*100+x:x)}});
  Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
- ["tx","ret","goals","nobal","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
+ ["tx","ret","goals","nobal","sep","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
 let S;try{S=normalize(JSON.parse(store.getItem(KEY)||"null"))}catch(e){S=DEF()}
 // ───────── Plusieurs années ─────────
 function pack(x){x=x||S;const o={};for(const k in x)if(!YKEYS.includes(k))o[k]=x[k];o.yrs=Object.assign({},x.yrs);o.yrs[x.year]={m:x.m,tx:x.tx,ret:x.ret,open:x.open,ap:x.ap};return o}
@@ -277,14 +278,14 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
  n.hidden=typeof cur!=="number";
  const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
- document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="set"?settings():month(cur);
+ app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
 // ───────── Vue d'un mois ─────────
@@ -309,11 +310,11 @@ function fixCard(m){
  <div class="row fh fx"><span>Facture</span><span>Prévu</span><span>Payé</span></div>
  ${vis("fix",m).map(n=>{const p=pre(m,n),r=v(m,"fix",n),ok=p>0&&r>=p;return`<div class="row${ok?" ok":""}"><span>${ok?"✓ ":""}${esc(n)}${(S.due||{})[n]?`<small class="note"> · le ${S.due[n].day}</small>`:""}</span><span class="two fx">${inp(m,"pre",n,p)}<button type="button" class="pay${ok?" on":""}" data-act="pay" data-m="${m}" data-n="${esc(n)}" title="${ok?"Annuler le paiement":"Valider le montant prévu"}" aria-label="${ok?"Annuler le paiement de":"Valider le prévu de"} ${esc(n)}"${p>0?"":" disabled"}>✓</button>${inp(m,"fix",n,r)}</span></div>`}).join("")}${none("fix")}${lineForm("fix")}</div>`}
 function envCard(m){
- const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
+ const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m&&!S.sep.includes(t.c)).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
  const opt=g=>vis(g,m).map(n=>`<option>${esc(n)}</option>`).join("");
  const bars=vis("env",m).map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
  return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2><button type="button" class="srch" data-act="txs">🔍 Rechercher dans toutes les dépenses</button>
- ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.length?`<optgroup label="Enveloppes">${opt("pot")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
+ ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.some(n=>!S.sep.includes(n))?`<optgroup label="Enveloppes">${vis("pot",m).filter(n=>!S.sep.includes(n)).map(n=>`<option>${esc(n)}</option>`).join("")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
  ${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}
  <h2 style="margin-top:16px">Budgets (facultatif)</h2><div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
 const openBlock=(g)=>`<details data-id="open-${g}"><summary>Soldes de départ (avant janvier)</summary>${vis(g,0).map(n=>`<label class="row"><span>${esc(n)}</span><input type="number" inputmode="decimal" step="0.01" value="${opm(g,n)||""}" placeholder="0" data-open="${g}|${esc(n)}" aria-label="Solde de départ ${esc(n)}"></label>`).join("")}<p class="note">Montant déjà présent avant le début de l'année.${hasData((S.yrs||{})[S.year-1])?" Le solde de fin "+(S.year-1)+" est reporté automatiquement : ces montants s'y ajoutent.":""}</p></details>`;
@@ -321,7 +322,7 @@ const adjBlock=(m,g)=>`<details data-id="adj-${g}-${m}"><summary>Ajustements du 
 function potCard(m){
  return`<div id="sec-pot" class="card env"><h2>Enveloppes · ${eur(sum(m,"pot"))} versés</h2><p class="note" style="margin:0 0 6px">Saisissez le montant versé, puis ajoutez les dépenses de l'enveloppe dans « Dépenses du mois ». Elles ne comptent pas dans les dépenses.</p>
  <div class="row fh"><span>Enveloppe</span><span>Versé · Solde</span></div>
- ${vis("pot",m).map(n=>`<div class="row"><span>${esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}${S.nobal.includes(n)?`<b style="width:96px;text-align:right;color:var(--mut)" title="Solde masqué (Réglages)">—</b>`:`<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b>`}</span></div>`).join("")}${none("pot")}
+ ${vis("pot",m).map(n=>`<div class="row"><span>${S.sep.includes(n)?`<button type="button" class="potlnk" data-act="pot" data-v="${esc(n)}" data-m="${m}">${esc(n)} ›</button>`:esc(n)}<br><small class="note">dépensé ${eur(spent(m,n))}${S.sep.includes(n)?" · compte séparé":""}</small></span><span class="two">${inp(m,"pot",n,v(m,"pot",n))}${S.nobal.includes(n)?`<b style="width:96px;text-align:right;color:var(--mut)" title="Solde masqué (Réglages)">—</b>`:`<b style="width:96px;text-align:right">${eur(soldePot(m,n))}</b>`}</span></div>`).join("")}${none("pot")}
  ${adjBlock(m,"pot")}${openBlock("pot")}${lineForm("pot")}</div>`}
 function savCard(m){
  const rl=S.ret.map((t,i)=>[t,i]).filter(([t])=>t.m===m);
@@ -405,6 +406,21 @@ function tipsPage(){const{n,T,H}=tipsList();
  return`<h2 style="margin:0 0 4px">Conseils d'épargne</h2><p class="note" style="margin:0 0 10px">Calculés sur vos <b>${n} mois complets</b> (${MC[f.m].toLowerCase()} ${f.y} → ${MC[l.m].toLowerCase()} ${l.y}). Ce sont des pistes tirées de vos propres chiffres, pas des conseils financiers personnalisés.</p>
  <div class="grid">${T.map(t=>`<div class="card"><h2>${t.ico} ${t.h}</h2><p class="note" style="margin:0;color:var(--txt,inherit)">${t.b}</p><div class="hl">${t.a}</div></div>`).join("")}
  ${T.length<2?`<div class="card"><p class="note" style="margin:0">Rien d'autre à signaler pour l'instant : vos dépenses sont stables.</p></div>`:""}</div>`}
+// ───────── Page d'une enveloppe (compte séparé) ─────────
+let potPg={n:"",m:0};
+function potPage(){const n=potPg.n,m=potPg.m;
+ if(!S.g.pot.includes(n)||!S.sep.includes(n)){return`<p class="note">Cette enveloppe n'a pas de compte séparé.</p><button class="cp" data-act="go" data-v="${lastM}">‹ Retour au mois</button>`}
+ const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m&&t.c===n).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
+ const yr=ALL.reduce((a,k)=>a+spent(k,n),0),vy=ALL.reduce((a,k)=>a+v(k,"pot",n),0),hid=S.nobal.includes(n);
+ const row=([t,i])=>{const hd=`${fdate(t.d)}`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`};
+ return`<button type="button" class="cp" data-act="go" data-v="${m}" style="margin:0 0 10px">‹ Retour à ${MOIS[m].toLowerCase()}</button>
+ <h2 style="margin:0 0 4px">${esc(n)} <small class="note">· compte séparé</small></h2>
+ <div class="seg" style="margin:8px 0"><button data-act="potm" data-v="-1"${m===0?" disabled":""} aria-label="Mois précédent">‹</button><button class="on" disabled>${MOIS[m]} ${S.year}</button><button data-act="potm" data-v="1"${m===11?" disabled":""} aria-label="Mois suivant">›</button></div>
+ <div class="kpis"><div class="kpi env"><small>Solde</small><b>${hid?"—":eur(soldePot(m,n))}</b></div><div class="kpi"><small>Versé ce mois</small><b>${eur(v(m,"pot",n))}</b></div><div class="kpi exp"><small>Dépensé ce mois</small><b>${eur(spent(m,n))}</b></div></div>
+ <div class="card env"><h2>Nouveau ticket</h2><form class="add" data-form="addpotx" data-m="${m}" data-c="${esc(n)}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>
+ ${list.length?list.map(row).join(""):`<p class="note">Aucun ticket ce mois-ci.</p>`}
+ <label class="row" style="margin-top:8px"><span>Versé ce mois</span>${inp(m,"pot",n,v(m,"pot",n))}</label>
+ <p class="note">Ces dépenses ne comptent pas dans les dépenses du mois : elles réduisent seulement le solde de cette enveloppe. Année ${S.year} : ${eur(vy)} versés, ${eur(yr)} dépensés.</p></div>`}
 // ───────── Objectifs ─────────
 function goalChart(g,L,sol,proj){
  const E=Math.max(L+1,(g.y*12+g.m)-S.year*12),W=340,H=170,pl=44,pr=14,pt=14,pb=26;
@@ -450,7 +466,7 @@ let setTab="bud";
 function settings(){
  const rowsOf=g=>S.g[g].map((n,i)=>S.end[n]?"":`<div class="row"><input class="ren" value="${esc(n)}" data-ren="${esc(n)}" data-g="${g}" maxlength="40" aria-label="Renommer ${esc(n)}">${g==="fix"?`<input class="due" type="number" min="1" max="31" inputmode="numeric" placeholder="Jour" data-due="${esc(n)}" value="${(S.due||{})[n]?S.due[n].day:""}" aria-label="Jour de prélèvement de ${esc(n)}" title="Jour du prélèvement">`:""}<span class="mv"><button class="x" data-act="up" data-g="${g}" data-i="${i}" aria-label="Monter">▲</button><button class="x" data-act="down" data-g="${g}" data-i="${i}" aria-label="Descendre">▼</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" aria-label="Retirer cette ligne" title="Retirer à partir de ce mois">✕</button></span></div>`).join("");
  const archBlock=g=>{const a=S.g[g].filter(n=>S.end[n]);return a.length?`<details data-id="arch-${g}" style="margin-top:10px"><summary>Lignes retirées (${a.length})</summary><p class="note">Elles n'apparaissent plus à partir de la date indiquée, mais gardent leur historique.</p>${a.map(n=>{const e=S.end[n];return`<div class="row"><span>${esc(n)}<br><small class="note">retirée depuis ${MOIS[e%100]} ${Math.floor(e/100)}</small></span><span class="mv"><button class="x" style="width:auto;padding:0 10px" data-act="unretire" data-n="${esc(n)}">Réactiver</button><button class="x" data-act="delline" data-g="${g}" data-n="${esc(n)}" data-hard="1" aria-label="Supprimer définitivement" title="Supprimer définitivement avec tout l'historique">🗑</button></span></div>`}).join("")}</details>`:""};
- const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].filter(n=>!S.end[n]).length} ligne${S.g[g].filter(n=>!S.end[n]).length>1?"s":""}</small></summary><div class="accb">${g==="fix"?`<p class="note" style="margin-top:0">Indiquez le <b>jour de prélèvement</b> de chaque facture : à cette date, le montant prévu est compté comme payé, sans rien valider. Vous n'avez qu'à corriger le « Payé » si le montant diffère.</p>`:""}${rowsOf(g)}${none(g)}${lineForm(g)}${archBlock(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
+ const acc=g=>`<details class="acc" data-id="acc-${g}"><summary><span>${GN[g]}</span><small>${S.g[g].filter(n=>!S.end[n]).length} ligne${S.g[g].filter(n=>!S.end[n]).length>1?"s":""}</small></summary><div class="accb">${g==="fix"?`<p class="note" style="margin-top:0">Indiquez le <b>jour de prélèvement</b> de chaque facture : à cette date, le montant prévu est compté comme payé, sans rien valider. Vous n'avez qu'à corriger le « Payé » si le montant diffère.</p>`:""}${rowsOf(g)}${none(g)}${lineForm(g)}${archBlock(g)}${g==="pot"&&S.g.pot.length?`<details data-id="nobal" style="margin-top:10px"><summary>Afficher le solde de chaque enveloppe</summary><p class="note">Décochez une enveloppe pour masquer son solde (la ligne garde son montant versé et ses dépenses).</p>${S.g.pot.map(n=>`<label class="chk"><input type="checkbox" data-bal="${esc(n)}"${S.nobal.includes(n)?"":" checked"}>${esc(n)}</label>`).join("")}</details><details data-id="sep" style="margin-top:10px"><summary>Enveloppes avec compte séparé</summary><p class="note">Cochez une enveloppe qui a son propre compte (les animaux, par exemple). Dans l'onglet du mois, touchez son nom pour ouvrir sa page de dépenses, avec ses propres tickets.</p>${S.g.pot.filter(n=>!S.end[n]).map(n=>`<label class="chk"><input type="checkbox" data-sep="${esc(n)}"${S.sep.includes(n)?" checked":""}>${esc(n)}</label>`).join("")}</details>`:""}</div></details>`;
  const seg=`<div class="seg" role="tablist"><button data-act="stab" data-v="bud" class="${setTab==="bud"?"on":""}" role="tab">Mon budget</button><button data-act="stab" data-v="app" class="${setTab==="app"?"on":""}" role="tab">Application</button></div>`;
  if(setTab==="bud")return seg+`<div class="card"><h2>Général</h2>
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
@@ -480,7 +496,7 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  const y0=S.year;stash();
  Object.keys(S.yrs).forEach(y=>{if(+y!==y0){loadYear(+y);yearPart();stash()}});
  loadYear(y0);yearPart();stash();
- S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);
+ S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);S.sep=(S.sep||[]).map(fn).filter(x=>x!==null);
  {const e2={};Object.keys(S.end||{}).forEach(k=>{const r=fn(k);if(r!==null)e2[r]=S.end[k]});S.end=e2}
  {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2}
  S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
@@ -534,6 +550,8 @@ function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=ne
   catch(e){alert(msg||"Import impossible : "+(e&&e.message||e));inp.value=""}};r.readAsText(f)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const d=b.dataset,a=d.act;
  if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
+ else if(a==="pot"){potPg={n:d.v,m:+d.m};lastM=+d.m;go("pot")}
+ else if(a==="potm"){potPg.m=Math.min(11,Math.max(0,potPg.m+(+d.v)));lastM=potPg.m;editTx=-1;draw()}
  else if(a==="sec")goSec(d.id);
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
  else if(a==="copyprev"){const m=+d.m;vis("fix",m).forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
@@ -583,6 +601,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.lockdelay!==undefined){const L=getLock();if(L){L.delay=+t.value;setLock(L)}}
  else if(d.k!==undefined){M(+d.m)[d.k+"|"+d.n]=t.value;save();draw()}
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
+ else if(d.sep!==undefined){S.sep=S.sep.filter(x=>x!==d.sep);if(t.checked)S.sep.push(d.sep);save();draw()}
  else if(d.bal!==undefined){S.nobal=S.nobal.filter(x=>x!==d.bal);if(!t.checked)S.nobal.push(d.bal);save();draw()}
  else if(d.due!==undefined)setDue(d.due,t.value);
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
@@ -594,6 +613,7 @@ document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.fo
  if(d.form==="addline")addLine(d.g,fd.get("n"));
  else if(d.form==="edittx"){const t=S.tx[+d.i],a=+fd.get("a");if(t&&a>0){t.a=a;t.n=String(fd.get("n")||"").trim();editTx=-1;save();draw()}}
  else if(d.form==="addrec")addRec(fd);
+ else if(d.form==="addpotx"){const a=+fd.get("a");if(a>0){S.tx.push({m:+d.m,d:fd.get("d"),c:d.c,a,n:String(fd.get("n")||"").trim()});save();draw()}}
  else if(d.form==="addtx"){S.tx.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
  else if(d.form==="editret"){const t=S.ret[+d.i],a=+fd.get("a");if(t&&a>0){t.a=a;t.n=String(fd.get("n")||"").trim();editRet=-1;save();draw()}}
  else if(d.form==="addret"){S.ret.push({m:+d.m,d:fd.get("d"),c:fd.get("c"),a:+fd.get("a"),n:String(fd.get("n")||"").trim()});save();draw()}
