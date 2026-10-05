@@ -208,7 +208,7 @@ const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
 const YKEYS=["m","tx","ret","open","ap"];let YC={};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],rec:[],due:{},ap:{},yrs:{},end:{},
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],rec:[],due:{},rem:{},ap:{},yrs:{},end:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[]});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
@@ -216,6 +216,7 @@ function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o)
  for(const k in d)if(o[k]==null)o[k]=d[k];
  if(typeof o.yrs!=="object"||Array.isArray(o.yrs))o.yrs={};
  if(typeof o.end!=="object"||Array.isArray(o.end))o.end={};
+ if(typeof o.rem!=="object"||Array.isArray(o.rem)||!o.rem)o.rem={};
  if(Array.isArray(o.rec))o.rec.forEach(r=>{if(r.fy==null){r.fy=o.year;r.skip=(r.skip||[]).map(x=>x<100?o.year*100+x:x)}});
  Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
@@ -288,7 +289,7 @@ function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
- document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
+ document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}}
 // ───────── Vue d'un mois ─────────
 function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
  const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
@@ -299,7 +300,7 @@ function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile 
  <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]))?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
- return hello+remind()+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
+ return hello+remind()+remCard(m)+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
 const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${vis("inc",m).map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
 const fixPre=m=>S.g.fix.reduce((a,n)=>a+pre(m,n),0);
@@ -515,6 +516,7 @@ function settings(){
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="alert"${S.noalert?"":" checked"}> Alertes quand le budget du mois est consommé (85, 90 et 98 %)</label></div>
  <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
+ ${remSet()}
  ${recCard()}`;
  const gd=GOOGLE_CLIENT_ID?`<div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>`:"";
  return seg+`${lockCard()}
@@ -541,6 +543,7 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);S.sep=(S.sep||[]).map(fn).filter(x=>x!==null);
  {const e2={};Object.keys(S.end||{}).forEach(k=>{const r=fn(k);if(r!==null)e2[r]=S.end[k]});S.end=e2}
  {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2}
+ {const r2={};Object.keys(S.rem||{}).forEach(k=>{const r=fn(k);if(r!==null)r2[r]=S.rem[k]});S.rem=r2}
  S.rec=(S.rec||[]).map(r=>{const c=fn(r.c);return c===null?null:Object.assign({},r,{c})}).filter(Boolean)}
 function renameLine(g,old,raw){const n=clean(raw),i=S.g[g].indexOf(old);if(!n||n===old||i<0){draw();return}
  if(exists(n)&&n.toLowerCase()!==old.toLowerCase()){alert("Ce nom existe déjà.");draw();return}
@@ -646,6 +649,8 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.open!==undefined){S.open[d.open]=t.value;save();draw()}
  else if(d.sep!==undefined){S.sep=S.sep.filter(x=>x!==d.sep);if(t.checked)S.sep.push(d.sep);save();draw()}
  else if(d.bal!==undefined){S.nobal=S.nobal.filter(x=>x!==d.bal);if(!t.checked)S.nobal.push(d.bal);save();draw()}
+ else if(d.remon!==undefined){S.rem=S.rem||{};const o=S.rem[d.remon]||{days:3};o.on=t.checked;S.rem[d.remon]=o;save();draw()}
+ else if(d.remd!==undefined){S.rem=S.rem||{};const o=S.rem[d.remd]||{on:true};o.days=+t.value;S.rem[d.remd]=o;save();draw()}
  else if(d.due!==undefined)setDue(d.due,t.value);
  else if(d.ren!==undefined)renameLine(d.g,d.ren,t.value);
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
@@ -858,6 +863,26 @@ function lockCard(){
 document.addEventListener("visibilitychange",()=>{const L=getLock();if(!L||!canLock())return;
  if(document.hidden){hiddenAt=Date.now();if(L.delay===0&&!isLocked())lockNow()}
  else if(hiddenAt&&!isLocked()&&Date.now()-hiddenAt>=L.delay*60000)lockNow()});
+// ───────── Rappels de factures ─────────
+const REMD=[[0,"Le jour même"],[1,"1 jour avant"],[2,"2 jours avant"],[3,"3 jours avant"],[5,"5 jours avant"],[7,"1 semaine avant"]];
+function remItems(){const now=new Date(),out=[];if(S.year!==now.getFullYear())return out;const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+ S.g.fix.forEach(n=>{const r=(S.rem||{})[n],dd=(S.due||{})[n];if(!r||!r.on||!dd||!(dd.day>=1))return;
+  for(const off of [0,1]){const mm=now.getMonth()+off;if(mm>11)continue;if(!live(n,mm))continue;
+   const day=Math.min(dd.day,new Date(S.year,mm+1,0).getDate()),when=new Date(S.year,mm,day),diff=Math.round((when-today)/864e5);
+   if(diff<0||diff>(r.days==null?3:r.days))continue;const p=pre(mm,n);if(p>0&&v(mm,"fix",n)>=p)continue;
+   out.push({n,diff,day,m:mm,a:p});break}});
+ return out.sort((a,b)=>a.diff-b.diff)}
+const remWhen=o=>o.diff===0?"aujourd'hui":o.diff===1?"demain":"dans "+o.diff+" jours";
+function remCard(m){const n=new Date();if(S.year!==n.getFullYear()||m!==n.getMonth())return"";const it=remItems();if(!it.length)return"";
+ return`<div class="hl rem" style="margin:0 0 12px"><b>🔔 Factures à venir</b>${it.map(o=>`<div class="row" style="padding:6px 0"><span>${esc(o.n)}<br><small class="note">${remWhen(o)} · le ${o.day} ${MOIS[o.m].toLowerCase()}</small></span><b>${o.a?eur(o.a):""}</b></div>`).join("")}</div>`}
+function remToast(){if(isLocked()||typeof cur!=="number")return;const it=remItems();if(!it.length)return;
+ const key=fmtD(new Date())+"|"+it.map(o=>o.n+o.diff).join(","),meta=getMeta();if(meta.remKey===key)return;setMeta({remKey:key});
+ let box=document.getElementById("alertbox");if(!box){box=document.createElement("div");box.id="alertbox";box.setAttribute("role","status");box.setAttribute("aria-live","polite");document.body.appendChild(box)}
+ box.innerHTML=`<button type="button" class="alertc" style="border-left-color:#2563eb" aria-label="Fermer le rappel"><b>🔔 ${it.length>1?it.length+" factures à venir":"Facture à venir"}</b><span>${it.slice(0,4).map(o=>esc(o.n)+" "+remWhen(o)+(o.a?" ("+eur(o.a)+")":"")).join("<br>")}</span><small>touche pour fermer</small></button>`;
+ box.className="on";clearTimeout(alertTimer);const close=()=>{box.className="";clearTimeout(alertTimer)};box.firstChild.onclick=close;alertTimer=setTimeout(close,10000);try{navigator.vibrate&&navigator.vibrate(60)}catch(e){}}
+function remSet(){const L=S.g.fix.filter(n=>!S.end[n]);if(!L.length)return"";
+ return`<div class="card"><h2>🔔 Rappels de factures</h2><p class="note" style="margin-top:0">Choisissez les factures à rappeler. Le rappel apparaît à l'ouverture de l'application (en bannière et en haut du mois en cours), à partir du nombre de jours choisi avant le <b>jour de prélèvement</b>, tant que la facture n'est pas payée. Une application web ne peut pas envoyer de notification quand elle est fermée.</p>
+ ${L.map(n=>{const r=(S.rem||{})[n]||{},dd=(S.due||{})[n],ok=!!(dd&&dd.day);return`<div class="row"><label class="chk" style="padding:4px 0"><input type="checkbox" data-remon="${esc(n)}"${r.on&&ok?" checked":""}${ok?"":" disabled"}>${esc(n)}${ok?`<small class="note"> · le ${dd.day}</small>`:`<small class="note"> · indiquez d'abord le jour de prélèvement</small>`}</label>${r.on&&ok?`<select data-remd="${esc(n)}" aria-label="Délai du rappel pour ${esc(n)}">${REMD.map(([d,l])=>`<option value="${d}"${(r.days==null?3:r.days)===d?" selected":""}>${l}</option>`).join("")}</select>`:""}</div>`}).join("")}</div>`}
 // ───────── Alertes de budget ─────────
 const ALERTS={85:{c:"#16a34a",m:["Attention, le budget commence à fondre plus vite qu'une glace en plein été ! 🍦","On est à 85 % ! C'est le moment idéal pour activer le mode « sage décision ». 🧘‍♂️","Petit coup d'œil dans le rétroviseur : 85 % utilisé ! On lève légèrement le pied sur l'accélérateur ? 🚗","Bravo pour ta gestion jusqu'ici ! Mais gardons une petite réserve pour la fin du mois. 😉","Hop hop hop ! La zone jaune approche. Tout va bien, mais garde l'œil ouvert ! 🟡"]},
 90:{c:"#f59e0b",m:["Alerte douceur : 90 % atteints ! Tes cartes bleues ont besoin d'un petit câlin (et de repos). 💳💤","90 % ! C'est le moment officiellement déclaré des repas « vide-frigo » créatifs ! 🧀🥫","Houston, on approche des 100 % ! Mode économie d'énergie activé sur le portefeuille. 🚀","Il reste 10 % ! Rappel amical : l'eau du robinet et les promenades au parc sont 100 % gratuites ! 🌳","On retient son souffle ! Plus que 10 % de marge. Tu gères, ne lâche rien ! 💪"]},
