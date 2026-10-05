@@ -53,6 +53,7 @@ input.bud{width:100%;margin-top:5px;padding:5px 8px;font-size:13px}
 .note{color:var(--mut);font-size:13px;margin:8px 0 0}
 .hl{background:var(--bg);border-radius:8px;padding:10px;margin-top:10px}
 button.potlnk{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--env,var(--brand));text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
+.bt{width:100%;border-collapse:collapse;font-size:11.5px}.bt td,.bt th{padding-left:4px!important;white-space:nowrap}.bt td:last-child{white-space:normal;font-size:11px}.bt th{font-weight:600;color:var(--mut);text-align:right;padding:4px 0}.bt td{padding:7px 0;border-top:1px solid var(--line);text-align:right}.bt td:first-child,.bt th:first-child{text-align:left}
 .chart{display:flex;align-items:flex-end;gap:4px;height:140px}.chart div{flex:1;text-align:center;font-size:11px;color:var(--mut)}.chart i{display:block;margin-bottom:3px;border-radius:4px 4px 0 0;min-height:2px}
 .add{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-bottom:10px}
 .add button,.addcat button.pri{background:var(--exp);color:#fff;border:0;border-radius:8px;padding:8px 12px;font:inherit;cursor:pointer}
@@ -278,14 +279,14 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
  n.hidden=typeof cur!=="number";
  const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
- document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":k==="an"?cur==="an"||cur==="bilan":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
+ app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}}
 // ───────── Vue d'un mois ─────────
@@ -344,7 +345,7 @@ function year(){
  const fx=ALL.reduce((a,k)=>a+fixPre(k),0),fp=ALL.reduce((a,k)=>a+sum(k,"fix"),0),fr=ALL.reduce((a,k)=>a+fixRest(k),0);
  const mx=Math.max(1,...T.map(t=>t.i),...T.map(t=>t.d)),cu=ALL.map(totSolde),cm=Math.max(1,...cu);
  const ch=(f,col,mxv)=>`<div class="chart">${ALL.map(k=>`<div><i style="height:${Math.max(0,f(k))/mxv*110}px;background:${col}"></i>${MOIS[k][0]}</div>`).join("")}</div>`;
- return`<h2 style="margin:0 0 10px">${S.year}</h2>
+ return`<h2 style="margin:0 0 10px">${S.year}</h2><button type="button" class="cp" data-act="go" data-v="bilan" style="margin:0 0 12px">📋 Bilan de fin d'année ${S.year}</button>
  <div class="kpis"><div class="kpi inc"><small>Revenus</small><b>${eur(i)}</b></div><div class="kpi exp"><small>Dépenses</small><b>${eur(d)}</b></div><div class="kpi sav"><small>Épargne versée · ${pct(i?s/i:0)}</small><b>${eur(s)}</b></div><div class="kpi env"><small>Enveloppes versées</small><b>${eur(p)}</b></div><div class="kpi"><small>Reste (hors report)</small><b>${eur(i-d-s-p)}</b></div></div>
  <div class="kpis"><div class="kpi inc"><small>Revenu moyen / mois</small><b>${eur(i/nm)}</b></div><div class="kpi exp"><small>Dépenses moy. / mois</small><b>${eur(d/nm)}</b></div><div class="kpi sav"><small>Épargne moy. / mois</small><b>${eur(s/nm)}</b></div></div>
  <div class="kpis"><div class="kpi"><small>Factures prévues</small><b>${eur(fx)}</b></div><div class="kpi exp"><small>Factures payées</small><b>${eur(fp)}</b></div><div class="kpi"><small>Reste à sortir</small><b>${eur(fr)}</b></div></div>
@@ -421,6 +422,47 @@ function potPage(){const n=potPg.n,m=potPg.m;
  ${list.length?list.map(row).join(""):`<p class="note">Aucun ticket ce mois-ci.</p>`}
  <label class="row" style="margin-top:8px"><span>Versé ce mois</span>${inp(m,"pot",n,v(m,"pot",n))}</label>
  <p class="note">Ces dépenses ne comptent pas dans les dépenses du mois : elles réduisent seulement le solde de cette enveloppe. Année ${S.year} : ${eur(vy)} versés, ${eur(yr)} dépensés.</p></div>`}
+// ───────── Bilan de fin d'année ─────────
+function yStats(y,ms){return withYear(y,()=>{const o={i:0,d:0,s:0,p:0,r:0,cat:{},fx:{},mo:{}};
+ ms.forEach(m=>{const inc=S.g.inc.filter(n=>!/reste/i.test(n)).reduce((a,n)=>a+v(m,"inc",n),0),T=tot(m),rt=retM(m);
+  o.i+=inc;o.d+=T.d;o.s+=T.s;o.p+=T.p;o.r+=rt;o.mo[m]={i:inc,d:T.d,sur:inc-T.d-T.s-T.p};
+  S.g.env.forEach(n=>{const a=spent(m,n);if(a)o.cat[n]=(o.cat[n]||0)+a});S.g.fix.forEach(n=>{const a=v(m,"fix",n)||pre(m,n);if(a)o.fx[n]=(o.fx[n]||0)+a})});
+ const L=ms.length?Math.max(...ms):0;o.sol=totSolde(L);o.sav=S.g.sav.map(n=>[n,ALL.slice(0,L+1).reduce((a,k)=>a+v(k,"sav",n),0),soldeSav(L,n)]).filter(x=>x[1]||x[2]);return o})}
+function bilanData(){stash();const y=S.year,nw=new Date(),act=withYear(y,()=>ALL.filter(active)).filter(m=>!(y===nw.getFullYear()&&m>=nw.getMonth())),py=y-1,hasP=hasData((S.yrs||{})[py]);
+ const pact=hasP?withYear(py,()=>ALL.filter(active)):[],both=act.filter(m=>pact.includes(m));
+ return{y,py,act,both,A:yStats(y,act),Ab:yStats(y,both),B:both.length>=2?yStats(py,both):null}}
+function bilanPage(){const D=bilanData(),{y,py,act,both,A,Ab,B}=D;
+ if(act.length<2)return`<button type="button" class="cp" data-act="go" data-v="an" style="margin:0 0 10px">‹ Annuel</button><h2>Bilan ${y}</h2><div class="card"><p class="note" style="margin:0">Il faut au moins 2 mois complets en ${y} pour faire un bilan.</p></div>`;
+ const rng=(ms)=>ms.length===12?"l'année entière":MC[ms[0]].toLowerCase().replace(/\.$/,"")+" → "+MC[ms[ms.length-1]].toLowerCase().replace(/\.$/,"");
+ const net=A.s-A.r,tx=A.i?net/A.i:0,mm=act.map(m=>[m,A.mo[m]]);const best=mm.slice().sort((a,b)=>b[1].sur-a[1].sur)[0],cher=mm.slice().sort((a,b)=>b[1].d-a[1].d)[0];
+ const dl=(a,b,good)=>{const x=a-b,c=Math.abs(x)<0.5?"":((x>0)===good?"var(--inc)":"var(--exp)");return`<span style="color:${c||"var(--mut)"}">${x>=0?"+":"−"}${eur(Math.abs(x))}${b?` (${x>=0?"+":"−"}${Math.abs(Math.round(x/b*100))} %)`:""}</span>`};
+ const line=(l,k,good)=>`<tr><td>${l}</td><td>${eur(Ab[k])}</td><td>${eur(B[k])}</td><td>${dl(Ab[k],B[k],good)}</td></tr>`;
+ let cmp="";
+ if(B){const mx=Math.max(1,...both.map(m=>Math.max(Ab.mo[m].d,B.mo[m].d)));
+  const ch=`<div class="chart" style="height:120px">${both.map(m=>`<div style="display:flex;flex-direction:column;justify-content:flex-end"><div style="display:flex;align-items:flex-end;gap:1px;justify-content:center"><i style="width:8px;height:${B.mo[m].d/mx*100}px;background:var(--line)"></i><i style="width:8px;height:${Ab.mo[m].d/mx*100}px;background:var(--exp)"></i></div>${MOIS[m][0]}</div>`).join("")}</div>`;
+  const names=[...new Set([...Object.keys(Ab.cat),...Object.keys(B.cat)])].map(c=>({c,x:(Ab.cat[c]||0)-(B.cat[c]||0)})),up=names.filter(o=>o.x>20).sort((a,b)=>b.x-a.x).slice(0,3),dn=names.filter(o=>o.x<-20).sort((a,b)=>a.x-b.x).slice(0,3);
+  const fn=Object.keys(Ab.fx).map(f=>({f,a:Ab.fx[f]/both.length,b:(B.fx[f]||0)/both.length})).filter(o=>o.b>0&&o.a>=o.b*1.05&&o.a-o.b>=1).sort((a,b)=>(b.a-b.b)-(a.a-a.b)).slice(0,4);
+  cmp=`<div class="card"><h2>${y} contre ${py}</h2><p class="note" style="margin:0 0 6px">Comparaison sur les mêmes mois : ${rng(both)}.</p>
+  <table class="bt"><tr><th></th><th>${y}</th><th>${py}</th><th>Écart</th></tr>${line("Revenus","i",true)}${line("Dépenses","d",false)}${line("Épargne versée","s",true)}${line("Enveloppes versées","p",true)}${line("Retraits d'épargne","r",false)}<tr><td>Solde épargne fin</td><td>${eur(Ab.sol)}</td><td>${eur(B.sol)}</td><td>${dl(Ab.sol,B.sol,true)}</td></tr></table>
+  <h2 style="margin-top:14px">Dépenses mois par mois</h2>${ch}<p class="note"><span style="color:var(--exp)">■</span> ${y} · <span style="color:var(--mut)">■</span> ${py}</p></div>
+  <div class="card"><h2>Ce qui a changé</h2>${up.length?`<p class="note" style="margin:0">Dépenses en hausse</p>${up.map(o=>`<div class="row"><span>${esc(o.c)}</span><b style="color:var(--exp)">+${eur(o.x)}</b></div>`).join("")}`:""}${dn.length?`<p class="note" style="margin:8px 0 0">Dépenses en baisse</p>${dn.map(o=>`<div class="row"><span>${esc(o.c)}</span><b style="color:var(--inc)">−${eur(-o.x)}</b></div>`).join("")}`:""}${!up.length&&!dn.length?`<p class="note" style="margin:0">Aucun poste n'a changé de plus de 20 €.</p>`:""}
+  ${fn.length?`<p class="note" style="margin:8px 0 0">Factures plus chères (par mois)</p>${fn.map(o=>`<div class="row"><span>${esc(o.f)}</span><b style="color:var(--exp)">${eur(o.b)} → ${eur(o.a)}</b></div>`).join("")}`:""}</div>`}
+ else cmp=`<div class="card"><p class="note" style="margin:0">Pas de comparaison avec ${py} : il faudrait au moins 2 mois saisis en ${py} sur les mêmes mois.</p></div>`;
+ const tops=Object.entries(A.cat).sort((a,b)=>b[1]-a[1]).slice(0,5),tt=Object.values(A.cat).reduce((a,x)=>a+x,0);
+ const goals=S.goals.map(g=>{const L=act[act.length-1],sol=g.lines.reduce((a,n)=>a+soldeSav(L,n),0);return`<div class="row"><span>${esc(g.name)}</span><b>${eur(sol)} / ${eur(g.t)} · ${Math.min(100,Math.round(sol/g.t*100))} %</b></div>`}).join("");
+ const txt=`Bilan ${y} (${rng(act)})\nRevenus : ${eur(A.i)}\nDépenses : ${eur(A.d)}\nÉpargne versée : ${eur(A.s)} (nette : ${eur(net)}, ${pct(tx)} des revenus)\nSolde épargne fin : ${eur(A.sol)}`+(B?`\nCompar. ${py} (mêmes mois) : dépenses ${eur(Ab.d)} contre ${eur(B.d)}, épargne ${eur(Ab.s)} contre ${eur(B.s)}`:"");
+ bilanTxt=txt;
+ return`<button type="button" class="cp" data-act="go" data-v="an" style="margin:0 0 10px">‹ Annuel</button>
+ <h2 style="margin:0 0 4px">Bilan ${y}</h2><p class="note" style="margin:0 0 10px">${act.length} mois complets (${rng(act)})${act.length<12?" · le mois en cours n'est pas compté":""}.</p>
+ <div class="bilan"><div class="hero"><small>Épargne nette de l'année</small><span class="big">${eur(net)}</span><p style="margin:6px 0 0;font-size:13px;color:inherit;opacity:.85">${pct(tx)} de vos revenus · solde total de l'épargne : <b>${eur(A.sol)}</b></p></div></div>
+ <div class="kpis"><div class="kpi inc"><small>Revenus</small><b>${eur(A.i)}</b></div><div class="kpi exp"><small>Dépenses</small><b>${eur(A.d)}</b></div><div class="kpi sav"><small>Épargne versée</small><b>${eur(A.s)}</b></div></div>
+ <div class="grid">${cmp}
+ <div class="card"><h2>Temps forts</h2><div class="row"><span>Meilleur mois</span><b>${MOIS[best[0]]} · ${eur(best[1].sur)} de marge</b></div><div class="row"><span>Mois le plus dépensier</span><b>${MOIS[cher[0]]} · ${eur(cher[1].d)}</b></div><div class="row"><span>Dépense moyenne</span><b>${eur(A.d/act.length)} / mois</b></div><div class="row"><span>Épargne moyenne</span><b>${eur(A.s/act.length)} / mois</b></div></div>
+ ${tops.length?`<div class="card exp"><h2>Vos 5 plus gros postes variables</h2>${tops.map(([n,a])=>`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)} · ${pct(a/tt)}</span></div><div class="bar"><i style="width:${a/tops[0][1]*100}%;background:var(--exp)"></i></div></div>`).join("")}</div>`:""}
+ ${A.sav.length?`<div class="card sav"><h2>Épargne par ligne</h2>${A.sav.map(([n,vs,so])=>`<div class="row"><span>${esc(n)}<br><small class="note">${eur(vs)} versés</small></span><b>${eur(so)}</b></div>`).join("")}</div>`:""}
+ ${goals?`<div class="card sav"><h2>Objectifs</h2>${goals}</div>`:""}</div>
+ <button type="button" class="cp" data-act="bilanshare" style="margin-top:12px">Partager ce résumé</button>`}
+let bilanTxt="";
 // ───────── Objectifs ─────────
 function goalChart(g,L,sol,proj){
  const E=Math.max(L+1,(g.y*12+g.m)-S.year*12),W=340,H=170,pl=44,pr=14,pt=14,pb=26;
@@ -553,6 +595,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="pot"){potPg={n:d.v,m:+d.m};lastM=+d.m;go("pot")}
  else if(a==="potm"){potPg.m=Math.min(11,Math.max(0,potPg.m+(+d.v)));lastM=potPg.m;editTx=-1;draw()}
  else if(a==="sec")goSec(d.id);
+ else if(a==="bilanshare"){if(navigator.share)navigator.share({text:bilanTxt}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(bilanTxt).then(()=>alert("Résumé copié."))}
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
  else if(a==="copyprev"){const m=+d.m;vis("fix",m).forEach(n=>{const p=pre(m-1,n);if(p&&!pre(m,n))M(m)["pre|"+n]=p});save();draw()}
  else if(a==="home")go("home");
