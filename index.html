@@ -52,6 +52,22 @@ input,select{border:1px solid var(--line);background:var(--bg);color:var(--ink);
 input.bud{width:100%;margin-top:5px;padding:5px 8px;font-size:13px}
 .note{color:var(--mut);font-size:13px;margin:8px 0 0}
 .hl{background:var(--bg);border-radius:8px;padding:10px;margin-top:10px}
+#fab{position:fixed;right:16px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:45;width:56px;height:56px;border-radius:50%;border:0;background:var(--brand);color:#fff;font-family:inherit;font-size:36px;font-weight:300;line-height:1;box-shadow:0 6px 18px rgba(30,30,80,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0 0 3px}
+#fab[hidden]{display:none}#fab:active{transform:scale(.94)}
+#fabsheet{position:fixed;inset:0;z-index:70;display:flex;align-items:flex-end;justify-content:center}
+#fabsheet .fbk{position:absolute;inset:0;background:rgba(10,10,25,.5)}
+#fabsheet .fbox{position:relative;width:100%;max-width:560px;background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+#fabsheet .fh2{display:flex;align-items:center;gap:8px}#fabsheet .fh2 .note{margin-left:auto}
+#fabsheet input,#fabsheet select{font:inherit;font-size:16px;background:var(--field);color:var(--ink);border:0;border-radius:12px;padding:12px;min-width:0;width:100%}
+#fabsheet .famt{font-size:28px;font-weight:700;padding:14px}
+#fabsheet .chips{display:flex;flex-wrap:wrap;gap:6px}
+#fabsheet .fchip{border:1.5px solid var(--line);background:none;color:var(--ink);border-radius:999px;padding:7px 12px;font:inherit;font-size:14px;cursor:pointer}
+#fabsheet .fchip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+#fabsheet .frow{display:flex;gap:8px}#fabsheet .frow input[type=date]{flex:0 0 46%}
+#fabsheet .fok{border:0;background:var(--brand);color:#fff;border-radius:14px;padding:14px;font:600 17px/1 inherit;font-family:inherit;cursor:pointer}
+#undobar{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:60;max-width:520px;margin:0 auto;background:#23233a;color:#fff;border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:14px;opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s}
+#undobar.on{opacity:1;transform:none;pointer-events:auto}#undobar button{margin-left:auto;border:0;background:none;color:#9fb4ff;font:600 15px/1 inherit;font-family:inherit;cursor:pointer;padding:6px}
+html.locked #fab{display:none}
 button.potlnk{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--env,var(--brand));text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
 .bt{width:100%;border-collapse:collapse;font-size:11.5px}.bt td,.bt th{padding-left:4px!important;white-space:nowrap}.bt td:last-child{white-space:normal;font-size:11px}.bt th{font-weight:600;color:var(--mut);text-align:right;padding:4px 0}.bt td{padding:7px 0;border-top:1px solid var(--line);text-align:right}.bt td:first-child,.bt th:first-child{text-align:left}
 .chart{display:flex;align-items:flex-end;gap:4px;height:140px}.chart div{flex:1;text-align:center;font-size:11px;color:var(--mut)}.chart i{display:block;margin-bottom:3px;border-radius:4px 4px 0 0;min-height:2px}
@@ -289,7 +305,7 @@ function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
- document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}}
+ document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
 // ───────── Vue d'un mois ─────────
 function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
  const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
@@ -557,7 +573,8 @@ function settings(){
  <label class="row"><span>Titre</span><input value="${esc(S.title)}" data-set="title" maxlength="30" style="width:60%"></label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="carry"${S.carry?" checked":""}> Reporter automatiquement le reste du mois précédent</label>
  <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="alert"${S.noalert?"":" checked"}> Alertes quand le budget du mois est consommé (85, 90 et 98 %)</label>
- <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="pace"${S.nopace?"":" checked"}> Afficher la vue « Ce mois-ci » en haut du mois en cours (jours restants, disponible par jour, rythme)</label></div>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="pace"${S.nopace?"":" checked"}> Afficher la vue « Ce mois-ci » en haut du mois en cours (jours restants, disponible par jour, rythme)</label>
+ <label class="chk" style="padding:8px 0 0"><input type="checkbox" data-set="fab"${S.nofab?"":" checked"}> Afficher le bouton + (ajout rapide d'une dépense)</label></div>
  <div class="card"><h2>Lignes du budget</h2><p class="note" style="margin-top:0">Ouvrez une catégorie pour renommer ses lignes, changer leur ordre (▲▼), en ajouter ou en supprimer (✕ supprime aussi leurs montants).</p>${["inc","fix","env","pot","sav"].map(acc).join("")}</div>
  ${remSet()}
  ${recCard()}`;
@@ -700,6 +717,7 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  else if(d.set==="carry"){S.carry=t.checked;save();draw()}
  else if(d.set==="alert"){S.noalert=!t.checked;save();draw()}
  else if(d.set==="pace"){S.nopace=!t.checked;save();draw()}
+ else if(d.set==="fab"){S.nofab=!t.checked;save();draw()}
  else if(d.set==="title"){S.title=clean(t.value)||"Mon budget";save();draw()}
  else if(d.set==="year"){S.year=Math.min(2100,Math.max(2000,+t.value||S.year));save();nav();draw()}});
 document.addEventListener("submit",e=>{const f=e.target,d=f.dataset;if(!d||!d.form)return;e.preventDefault();const fd=new FormData(f);
@@ -931,6 +949,7 @@ function remSet(){const L=S.g.fix.filter(n=>!S.end[n]);if(!L.length)return"";
 // ───────── Vue « ce mois-ci » ─────────
 function paceCard(m){const n=new Date();if(S.nopace||S.year!==n.getFullYear()||m!==n.getMonth())return"";
  const D=new Date(S.year,m+1,0).getDate(),t=n.getDate(),left=D-t+1,T=tot(m),e=sum(m,"env"),fr=fixRest(m),avail=T.r-fr;
+ if(!(T.i||T.c||T.d||T.s||T.p))return"";
  let B=S.g.env.reduce((a,x)=>a+v(m,"bud",x),0),src="budget";
  if(!(B>0)){let h=[];try{h=histo().slice(-6)}catch(x){}const ee=h.map(r=>Object.values(r.cat).reduce((a,x)=>a+x,0)).filter(x=>x>0);if(ee.length>=3){B=ee.reduce((a,x)=>a+x,0)/ee.length;src="moyenne"}else B=0}
  const perDay=avail/left,cur=e/t,proj=t>=5?e/t*D:null,pr=proj!=null?avail-(proj-e):null;
@@ -945,6 +964,40 @@ function paceCard(m){const n=new Date();if(S.nopace||S.year!==n.getFullYear()||m
  <div class="cat" style="margin-top:10px"><div><span>Temps écoulé</span><span>${t} / ${D} jours</span></div><div class="bar"><i style="width:${w(t/D*100)};background:var(--mut)"></i></div></div>
  ${B>0?`<div class="cat"><div><span>Dépenses du mois (hors factures)</span><span>${eur(e)} / ${eur(B)}</span></div><div class="bar"><i style="width:${w(e/B*100)};background:${e>B?"var(--exp)":e/B>t/D?"#f59e0b":"var(--inc)"}"></i></div></div>`:""}
  <p class="note" style="margin:8px 0 0">Disponible = reste actuel (${eur(T.r)}) moins les factures encore à payer (${eur(fr)}).${pr!=null?` Au rythme actuel, il resterait environ <b>${eur(pr)}</b> en fin de mois.`:""}</p></div>`}
+// ───────── Bouton + : ajout rapide d'une dépense ─────────
+let undoT=0;
+function fabCtx(){const now=new Date();let m,pot="";
+ if(cur==="pot"){m=potPg.m;pot=potPg.n}else if(typeof cur==="number")m=cur;else m=S.year===now.getFullYear()?now.getMonth():lastM;
+ return{m,pot}}
+function fabCats(m){const names=[...S.g.env,...S.g.pot].filter(n=>live(n,m)),cnt={};
+ try{txAll().forEach(t=>{cnt[t.c]=(cnt[t.c]||0)+1})}catch(e){}
+ const top=names.slice().sort((a,b)=>(cnt[b]||0)-(cnt[a]||0));return{names,top}}
+function fabUpdate(){let b=document.getElementById("fab");
+ const ok=!S.nofab&&!isLocked()&&(typeof cur==="number"||cur==="pot"||cur==="an"||cur==="tx");
+ if(!b){b=document.createElement("button");b.id="fab";b.type="button";b.setAttribute("aria-label","Ajouter une dépense");b.textContent="+";b.onclick=openFab;document.body.appendChild(b)}
+ b.hidden=!ok||!!document.getElementById("fabsheet")}
+function closeFab(){const s=document.getElementById("fabsheet");if(s)s.remove();fabUpdate()}
+function openFab(){if(document.getElementById("fabsheet"))return;const{m,pot}=fabCtx(),{names,top}=fabCats(m);
+ if(!names.length){alert("Ajoutez d'abord une ligne de dépenses dans Réglages.");return}
+ const last=(getMeta().lastCat||""),def=pot&&names.includes(pot)?pot:names.includes(last)?last:top[0];
+ const s=document.createElement("div");s.id="fabsheet";s.setAttribute("role","dialog");s.setAttribute("aria-label","Nouvelle dépense");
+ s.innerHTML=`<div class="fbk" data-x="1"></div><form class="fbox" autocomplete="off"><div class="fh2"><b>Nouvelle dépense</b><span class="note">${MOIS[m]} ${S.year}</span><button type="button" class="x" data-x="1" aria-label="Fermer">✕</button></div>
+ <input class="famt" name="a" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant (€)" required aria-label="Montant">
+ <div class="chips">${top.slice(0,6).map(n=>`<button type="button" class="fchip${n===def?" on":""}" data-c="${esc(n)}">${esc(n)}</button>`).join("")}</div>
+ <select name="c" aria-label="Catégorie">${S.g.env.some(n=>live(n,m))?`<optgroup label="Dépenses">${S.g.env.filter(n=>live(n,m)).map(n=>`<option${n===def?" selected":""}>${esc(n)}</option>`).join("")}</optgroup>`:""}${S.g.pot.some(n=>live(n,m))?`<optgroup label="Enveloppes">${S.g.pot.filter(n=>live(n,m)).map(n=>`<option${n===def?" selected":""}>${esc(n)}</option>`).join("")}</optgroup>`:""}</select>
+ <div class="frow"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required aria-label="Date"><input name="n" placeholder="Note (facultatif)" maxlength="60" aria-label="Note"></div>
+ <button class="fok">Ajouter</button></form>`;
+ document.body.appendChild(s);fabUpdate();
+ const f=s.querySelector("form"),sel=f.c;
+ s.addEventListener("click",e=>{const t=e.target;if(t.dataset&&t.dataset.x)closeFab();else if(t.classList&&t.classList.contains("fchip")){sel.value=t.dataset.c;f.querySelectorAll(".fchip").forEach(c=>c.classList.toggle("on",c===t))}});
+ sel.addEventListener("change",()=>f.querySelectorAll(".fchip").forEach(c=>c.classList.toggle("on",c.dataset.c===sel.value)));
+ f.addEventListener("submit",e=>{e.preventDefault();const a=+f.a.value;if(!(a>0))return;const t={m,d:f.d.value,c:sel.value,a,n:f.n.value.trim()};
+  S.tx.push(t);setMeta({lastCat:t.c});save();closeFab();draw();undoBar(t)});
+ const esc2=e=>{if(e.key==="Escape"){closeFab();document.removeEventListener("keydown",esc2)}};document.addEventListener("keydown",esc2);
+ setTimeout(()=>{try{f.a.focus()}catch(e){}},60)}
+function undoBar(t){let b=document.getElementById("undobar");if(!b){b=document.createElement("div");b.id="undobar";b.setAttribute("role","status");document.body.appendChild(b)}
+ b.innerHTML=`<span>Ajouté · <b>${eur(t.a)}</b> · ${esc(t.c)}</span><button type="button">Annuler</button>`;b.className="on";clearTimeout(undoT);
+ const hide=()=>{b.className="";clearTimeout(undoT)};b.querySelector("button").onclick=()=>{const i=S.tx.indexOf(t);if(i>=0){S.tx.splice(i,1);save();draw()}hide()};undoT=setTimeout(hide,7000)}
 // ───────── Alertes de budget ─────────
 const ALERTS={85:{c:"#16a34a",m:["Attention, le budget commence à fondre plus vite qu'une glace en plein été ! 🍦","On est à 85 % ! C'est le moment idéal pour activer le mode « sage décision ». 🧘‍♂️","Petit coup d'œil dans le rétroviseur : 85 % utilisé ! On lève légèrement le pied sur l'accélérateur ? 🚗","Bravo pour ta gestion jusqu'ici ! Mais gardons une petite réserve pour la fin du mois. 😉","Hop hop hop ! La zone jaune approche. Tout va bien, mais garde l'œil ouvert ! 🟡"]},
 90:{c:"#f59e0b",m:["Alerte douceur : 90 % atteints ! Tes cartes bleues ont besoin d'un petit câlin (et de repos). 💳💤","90 % ! C'est le moment officiellement déclaré des repas « vide-frigo » créatifs ! 🧀🥫","Houston, on approche des 100 % ! Mode économie d'énergie activé sur le portefeuille. 🚀","Il reste 10 % ! Rappel amical : l'eau du robinet et les promenades au parc sont 100 % gratuites ! 🌳","On retient son souffle ! Plus que 10 % de marge. Tu gères, ne lâche rien ! 💪"]},
