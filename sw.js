@@ -1,36 +1,28 @@
-// Service worker : l'application fonctionne hors connexion.
-// Stratégie "réseau d'abord" : à chaque ouverture avec internet, la dernière version est chargée ;
-// sans internet, la dernière version mémorisée est utilisée.
-const CACHE = "budget-app-v29";
-const FILES = ["./", "manifest.webmanifest", "privacy.html", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png"];
+// Service worker : fonctionnement hors ligne (réseau d'abord, cache en secours)
+const CACHE = "kitchenchef-v8";
+const ASSETS = ["./", "index.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png", "apple-touch-icon.png"];
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE).then((c) => Promise.allSettled(FILES.map((f) => c.add(f)))).then(() => self.skipWaiting())
-  );
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
 
-self.addEventListener("activate", (e) => {
+self.addEventListener("activate", e => {
   e.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-self.addEventListener("fetch", (e) => {
+self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
-  const isPage = req.mode === "navigate";
   e.respondWith(
     fetch(req)
-      .then((res) => {
-        if (res && res.ok && !res.redirected) {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(isPage ? "./" : req, copy));
-        }
+      .then(res => {
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put(req, copy));
         return res;
       })
-      .catch(() => caches.match(isPage ? "./" : req).then((r) => r || caches.match("./")))
+      .catch(() => caches.match(req).then(r => r || caches.match("index.html")))
   );
 });
