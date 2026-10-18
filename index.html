@@ -626,15 +626,18 @@ function linesOf(G,al,m){const lines={};
 const sumO=o=>Object.values(o).reduce((a,x)=>a+x,0);
 // total versé ce mois-ci sur les lignes d'épargne rattachées à un objectif
 const goalDep=m=>[...new Set(S.goals.flatMap(g=>g.lines))].filter(n=>S.g.sav.includes(n)).reduce((a,n)=>a+Math.max(0,v(m,"sav",n)),0);
-// plan du mois m, calculé sur les soldes du début du mois ; lines = montant prévu par ligne d'épargne, tot = total prévu
-function planAt(m){if(!S.goals.length)return null;const G=goalG(m-1),cap=capNow(),R=planCore(G,cap),al=R.months[0]||G.map(()=>0);
- return{m,G,R,cap,lines:linesOf(G,al,m),tot:al.reduce((a,x)=>a+x,0),base:S.year*12+m-1}}
+// plan du mois m, calculé sur les soldes du début du mois.
+// Montant NÉCESSAIRE = ce qu'il faut verser pour tenir toutes les échéances (le minimum), sauf s'il y a un objectif prioritaire ou « dès que possible » : alors toute la capacité compte.
+// La capacité d'épargne au-delà du nécessaire est facultative (elle fait avancer les objectifs plus vite).
+function planAt(m){if(!S.goals.length)return null;const G=goalG(m-1),cap=capNow(),R=planCore(G,cap),minC=planMinCap(G),asap=G.some(x=>x.rem>0.005&&(x.nd||x.pr)),capReq=asap?cap:Math.min(cap,minC),
+  Rr=capReq===cap?R:planCore(G,capReq),al=Rr.months[0]||G.map(()=>0);
+ return{m,G,R,cap,minC,capReq,lines:linesOf(G,al,m),tot:al.reduce((a,x)=>a+x,0),base:S.year*12+m-1}}
 // suite du plan à partir de l'état réel du mois m : ce qui est déjà versé (même plus que prévu, même sur une autre ligne) est déduit,
-// le reste à verser ce mois-ci est recalculé avec le montant qu'il reste, puis les mois suivants sont replanifiés.
+// le reste nécessaire ce mois-ci est recalculé, puis les mois suivants sont replanifiés. opt = capacité encore disponible, facultative.
 function planLive(m,extra){const P=planAt(m);if(!P)return null;
  const dep=goalDep(m),capRest=Math.max(0,P.tot-dep),G0=goalG(m,null,1),R0=planCore(G0,capRest<1?0:capRest),al=capRest<1?G0.map(()=>0):(R0.months[0]||G0.map(()=>0));
  const rest=linesOf(G0,al,m),G=goalG(m,(g,i)=>al[i]+(extra?extra(g,i):0));
- return{P,G,R:planCore(G,P.cap),rest,dep,restTot:sumO(rest),base:S.year*12+m}}
+ return{P,G,R:planCore(G,P.cap),rest,dep,restTot:sumO(rest),opt:Math.max(0,P.cap-Math.max(dep,P.tot)),base:S.year*12+m}}
 function planView(pm){if(pm<12)return planLive(pm);const P=planAt(12);return P&&{P,G:P.G,R:P.R,base:P.base,rest:{}}}
 const ymLab=(ym,short)=>(short?MC:MOIS)[ym%12].toLowerCase()+" "+Math.floor(ym/12);
 function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(pm);if(!Lv)return"";
@@ -664,12 +667,12 @@ function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(
  const bars=R.months.slice(0,Kc).map((al,k)=>{let y0=0;return idx.map(i=>{const h=al[i];if(h<=0.005)return"";const r=`<rect x="${(pl+k*bw+bw*0.12).toFixed(1)}" y="${Y(y0+h).toFixed(1)}" width="${(bw*0.76).toFixed(1)}" height="${(Y(y0)-Y(y0+h)).toFixed(1)}" style="fill:${col(i)}"/>`;y0+=h;return r}).join("")}).join("");
  const chart=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Montant à épargner chaque mois, par objectif"><text x="${pl-4}" y="${Y(mx)+3}" text-anchor="end" font-size="9" style="fill:var(--mut)">${kE(mx)}</text><text x="${pl-4}" y="${Y(0)+3}" text-anchor="end" font-size="9" style="fill:var(--mut)">0</text>${bars}${cap>0?`<line x1="${pl}" x2="${W-pr}" y1="${Y(cap).toFixed(1)}" y2="${Y(cap).toFixed(1)}" stroke-dasharray="3 3" style="stroke:var(--mut)"/>`:""}<text x="${pl}" y="${H-8}" font-size="9" style="fill:var(--mut)">${lab(1)}</text><text x="${W-pr}" y="${H-8}" text-anchor="end" font-size="9" style="fill:var(--mut)">${lab(Kc)}</text></svg>`;
  const shared=(()=>{const seen={};let d=false;G.forEach(x=>x.lines.forEach(n=>{if(seen[n]&&seen[n]!==x.name)d=true;seen[n]=x.name}));return d})();
- const now=pm<12&&(planned>0||dep>0)?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>${dep>0?"Reste à verser":"À verser"} en ${MOIS[pm].toLowerCase()}</small><b>${eur(rest)}</b><small class="note">prévu ${eur(planned)} · déjà versé ${eur(dep)}</small></div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>
- <p class="note" style="margin:0 0 6px">${ln.map(x=>rl[x]>0.5?`${esc(x)} <b>${eur(rl[x])}</b>`:`${esc(x)} ✓`).join(" · ")}</p>${dep>planned+1?`<p class="note" style="margin:0 0 6px">Vous avez versé <b>${eur(dep-planned)}</b> de plus que prévu : le plan s'est adapté et les objectifs avancent plus vite.</p>`:""}
+ const now=pm<12&&(planned>0||dep>0)?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>${rest>0.5?"Reste à verser":"À jour"} en ${MOIS[pm].toLowerCase()}</small><b>${rest>0.5?eur(rest):"✓"}</b><small class="note">nécessaire ${eur(planned)} · versé ${eur(dep)}</small></div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>
+ <p class="note" style="margin:0 0 6px">${ln.map(x=>rl[x]>0.5?`${esc(x)} <b>${eur(rl[x])}</b>`:`${esc(x)} ✓`).join(" · ")}</p>${dep>planned+1?`<p class="note" style="margin:0 0 6px">Vous avez versé <b>${eur(dep-planned)}</b> de plus que nécessaire : le plan s'est adapté et les objectifs avancent plus vite.</p>`:""}${rest<=0.5&&Lv.opt>=1?`<p class="note" style="margin:0 0 6px">Facultatif : votre capacité d'épargne n'est pas atteinte, il reste ${eur(Lv.opt)} possibles pour avancer plus vite.</p>`:""}
  ${rest>0.5?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${pm}">🎯 Verser le prévu du mois · ${eur(rest)}</button>`:`<p class="note" style="margin:0 0 6px;color:var(--inc)">✓ Versements du mois faits.</p>`}`
   :ft>0?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>À épargner en ${labL(1)}</small><b>${eur(ft)}</b></div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>`:"";
  return`<div class="card sav"><h2>📅 Plan d'épargne</h2>
- <p class="note" style="margin:0 0 8px">Montant à mettre de côté chaque mois pour tenir toutes les échéances. Ordre : ⭐ les objectifs prioritaires d'abord (au plus vite), puis l'échéance la plus proche, puis les objectifs « dès que possible » avec ce qui reste. Le montant du mois est fixé au début du mois ; la suite tient compte de vos versements et retraits.</p>
+ <p class="note" style="margin:0 0 8px">« Nécessaire » = ce qu'il faut verser ce mois-ci pour tenir toutes vos échéances. Votre capacité d'épargne, au-delà, est facultative : elle fait avancer vos objectifs plus vite. Ordre : ⭐ les objectifs prioritaires d'abord, puis l'échéance la plus proche, puis les objectifs « dès que possible ». Le plan tient compte de vos versements et retraits réels.</p>
  <label class="row"><span>Capacité d'épargne / mois<br><small class="note">${capSet()?"saisie":"automatique"} · moyenne récente ${eur(auto)}</small></span><input type="number" inputmode="decimal" step="5" min="0" data-gcap value="${capSet()?S.goalCap:""}" placeholder="${Math.round(auto)}" aria-label="Capacité d'épargne mensuelle"></label>
  <div class="hl">${verdict}</div>
  ${now}
@@ -696,13 +699,13 @@ function goalTrack(m){const n=new Date();if(S.nogoal||!S.goals.length||S.year!==
  const Lv=planLive(m);if(!Lv)return"";const{P,G,R}=Lv,rl=Lv.rest,ln=Object.keys(rl).filter(x=>rl[x]>0.5),lab=k=>ymLab(Lv.base+k);
  const planned=sumO(P.lines),dep=Lv.dep,rest=Lv.restTot;
  const it=[];
- if(planned>0||dep>0)it.push(rest>0.5?`<div class="gtl"><span>📌 <b>Il reste ${eur(rest)} à verser ce mois-ci</b><br><small class="note">prévu ${eur(planned)}${dep>0?` · déjà versé ${eur(dep)}`:""}<br>${ln.map(x=>`${esc(x)} ${eur(rl[x])}`).join(" · ")}</small></span><button type="button" class="gp" data-act="gpayall" data-m="${m}">Verser ${eur(rest)}</button></div>`:`<div>✅ Versements du mois faits : ${eur(dep)} versés pour ${eur(planned)} prévus.${dep>planned+1?` Vous avez versé <b>${eur(dep-planned)} de plus</b> que prévu : le plan s'est adapté, vos objectifs avancent plus vite.`:""}</div>`);
+ if(planned>0||dep>0)it.push(rest>0.5?`<div class="gtl"><span>📌 <b>Il reste ${eur(rest)} à verser ce mois-ci</b><br><small class="note">nécessaire ${eur(planned)}${dep>0?` · déjà versé ${eur(dep)}`:""}<br>${ln.map(x=>`${esc(x)} ${eur(rl[x])}`).join(" · ")}</small></span><button type="button" class="gp" data-act="gpayall" data-m="${m}">Verser ${eur(rest)}</button></div>`:`<div>✅ Vous êtes à jour : ${eur(dep)} versés pour ${eur(planned)} nécessaires.${dep>planned+1?` Vous avez versé <b>${eur(dep-planned)} de plus</b> que nécessaire : le plan s'est adapté, vos objectifs avancent plus vite.`:""}${Lv.opt>=1?`<br><small class="note">Facultatif : votre capacité d'épargne (${eur(P.cap)}) n'est pas atteinte, il reste ${eur(Lv.opt)} possibles.</small>`:""}</div>`);
  const late=G.map((x,i)=>i).filter(i=>G[i].rem>0.005&&!G[i].nd&&R.remD[i]>0.5);
  if(late.length&&P.cap>0){const need=planMinCap(G);
   it.push(`<div>🟠 ${late.map(i=>`<b>${esc(G[i].name)}</b> prend du retard : atteint en ${R.done[i]!=null?lab(R.done[i]):"plus de 40 ans"} au lieu de ${MOIS[G[i].g.m].toLowerCase()} ${G[i].g.y}.`).join("<br>")}<br>Pour tout tenir, il faudrait épargner <b>${eur(need)}</b> par mois au lieu de ${eur(P.cap)}${capSet()?"":" (votre moyenne récente)"}.</div>`)}
  [...new Set(S.ret.filter(t=>t.m===m).map(t=>t.c))].forEach(x=>{const r=retImpact(m,x);if(r.length)it.push(`<div>↩️ Retrait de <b>${eur(retN(m,x))}</b> sur ${esc(x)} : ${r.join(" ; ")}.</div>`)});
  if(m>0&&(late.length||n.getDate()<=10)){const Pp=planAt(m-1);if(Pp){const t=Pp.tot-goalDep(m-1);
-  if(t>1)it.push(`<div>📉 En ${MOIS[m-1].toLowerCase()}, <b>${eur(t)}</b> de moins que prévu au total.${late.length?"":" Le plan reste tenable."}</div>`)}}
+  if(t>1)it.push(`<div>📉 En ${MOIS[m-1].toLowerCase()}, <b>${eur(t)}</b> de moins que nécessaire au total.${late.length?"":" Le plan reste tenable."}</div>`)}}
  if(!it.length)return"";
  return`<div class="card sav gtrack" style="margin:0 0 12px"><h2>🎯 Objectifs ce mois-ci</h2>${it.map(x=>`<div class="hl" style="margin-top:8px">${x}</div>`).join("")}${late.length?`<button type="button" class="cp" data-act="go" data-v="obj" style="margin:10px 0 0">Voir le plan d'épargne ›</button>`:""}</div>`}
 function infoToast(t,b,c){let box=document.getElementById("alertbox");if(!box){box=document.createElement("div");box.id="alertbox";box.setAttribute("role","status");box.setAttribute("aria-live","polite");document.body.appendChild(box)}
@@ -1335,7 +1338,7 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=35;
+const APP_VER=36;
 const TUTO=[
 {i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
 {i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil."]},
@@ -1347,6 +1350,7 @@ const TUTO=[
 {i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
 {i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
 const CHANGES=[
+{v:36,t:"Plan d'épargne plus clair",l:["Le montant « à verser » est maintenant le minimum nécessaire pour tenir vos échéances.","Votre capacité d'épargne au-delà est facultative : elle fait avancer les objectifs, sans être un reste à payer.","Dès que vous avez versé le nécessaire, le plan affiche « À jour »."]},
 {v:35,t:"Objectifs plus efficaces",l:["« Verser le prévu » : le montant du plan d'épargne se verse en un toucher, dans le mois ou dans Objectifs.","Nouvelle carte « Objectifs ce mois-ci » : versements prévus, objectif qui prend du retard, effet d'un retrait.","Objectifs ⭐ prioritaires et objectifs sans échéance (« dès que possible »).","Le plan s'adapte à ce que vous versez vraiment : un versement plus élevé sur une ligne réduit ce qu'il reste à verser ailleurs."]},
 {v:33,t:"Tutoriel et nouveautés",l:["Un tutoriel de bienvenue explique l'appli pas à pas.","À chaque mise à jour, ce bandeau résume ce qui change.","Retrouvez les deux dans Réglages › Application › Aide."],tuto:1},
 {v:32,t:"Cartes repliables",l:["Les cartes du mois se replient d'un toucher, l'état est mémorisé.","Nouvelle page d'accueil « Détail du mois » avec l'essentiel."]},
