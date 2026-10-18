@@ -213,6 +213,29 @@ button.back{border:0;background:none;color:var(--brand);font:inherit;font-size:1
 .fqs{display:flex;gap:6px;flex-wrap:wrap}.fqs select{flex:1;min-width:110px}
 button.txr{width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);color:inherit;font:inherit;cursor:pointer;display:flex;justify-content:space-between;gap:10px;padding:10px 2px;border-radius:0}
 button.txr:active{background:var(--field)}
+
+#tuto{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(10,10,25,.62);padding:16px}
+#tuto .tbox{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow:auto;background:var(--card);color:var(--ink);border-radius:24px;padding:22px 20px calc(18px + env(safe-area-inset-bottom));box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px}
+#tuto .tico{width:72px;height:72px;border-radius:22px;background:var(--field);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto}
+#tuto h2{margin:0;text-align:center;font-size:21px}
+#tuto p{margin:0;text-align:center;line-height:1.5;font-size:15px}
+#tuto ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+#tuto li{background:var(--field);border-radius:12px;padding:9px 12px;font-size:14px;line-height:1.4}
+#tuto .tdots{display:flex;justify-content:center;gap:6px}
+#tuto .tdots i{width:7px;height:7px;border-radius:50%;background:var(--line)}#tuto .tdots i.on{background:var(--brand);width:20px;border-radius:4px}
+#tuto .tbtn{display:flex;gap:8px}
+#tuto button{font:inherit;font-size:16px;border-radius:14px;padding:13px;cursor:pointer;border:0}
+#tuto .tp{flex:1;background:var(--brand);color:var(--herotxt);font-weight:600}
+#tuto .ts{background:var(--field);color:var(--ink)}
+#tuto .tx{background:none;color:var(--mut);font-size:14px;padding:6px}
+.news{background:var(--card);border:1.5px solid var(--brand);border-radius:18px;padding:14px;margin:0 0 12px}
+.news h3{margin:0 0 6px;font-size:16px}.news ul{margin:6px 0 10px;padding-left:20px;font-size:14px;line-height:1.45}
+.news .nb{display:flex;gap:8px;flex-wrap:wrap}
+.news button,.nvbox button{font:inherit;font-size:14px;border-radius:12px;padding:9px 14px;border:0;cursor:pointer;background:var(--field);color:var(--ink)}
+.news button.p,.nvbox button.p{background:var(--brand);color:var(--herotxt);font-weight:600}
+#nvsheet{position:fixed;inset:0;z-index:85;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,10,25,.55)}
+#nvsheet .nvbox{width:100%;max-width:560px;max-height:85dvh;overflow:auto;background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+#nvsheet h2{margin:0 0 4px}#nvsheet h3{margin:14px 0 4px;font-size:15px}#nvsheet ul{margin:0;padding-left:20px;font-size:14px;line-height:1.45}
 </style>
 </head>
 <body>
@@ -311,9 +334,9 @@ function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;if(e.tagName==="DETAILS"&&!e.open)e.open=true;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
-function draw(){const y=scrollY,app=document.getElementById("app");
+function draw(){const y=scrollY,app=document.getElementById("app");try{tutoInit()}catch(e){}
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
+ app.innerHTML=newsHtml()+(cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
 // ───────── Cartes repliables du mois ─────────
@@ -659,7 +682,7 @@ function settings(){
  ${remSet()}
  ${recCard()}`;
  const gd=GOOGLE_CLIENT_ID?`<div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>`:"";
- return seg+`${lockCard()}
+ return seg+`${helpCard()}${lockCard()}
  <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ».${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
  <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button><button data-act="exp">Exporter (JSON)</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
  <div class="card"><h2>Tableur (CSV)</h2><p class="note" style="margin-top:0">Exportez vos budgets et vos dépenses pour Excel ou Numbers, ou importez un tableau (par exemple une ancienne année). Enregistrez votre tableur au format CSV avant de l'importer.</p><div class="btns"><button data-act="csvb">Exporter le budget</button><button data-act="csvt">Exporter les dépenses</button><button data-act="csvi">Importer un CSV</button></div><input id="impcsv" type="file" accept=".csv,text/csv,text/plain" hidden>
@@ -734,7 +757,14 @@ function importJson(inp){const f=inp.files&&inp.files[0];if(!f)return;const r=ne
   const nn=normalize(o);nn.updated=Date.now();store.setItem(KEY,JSON.stringify(pack(nn)));location.reload()}
   catch(e){alert(msg||"Import impossible : "+(e&&e.message||e));inp.value=""}};r.readAsText(f)}
 document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(!b)return;const d=b.dataset,a=d.act;
- if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
+ if(a==="tnext"){tutoI=Math.min(TUTO.length-1,tutoI+1);tutoDraw()}
+ else if(a==="tprev"){tutoI=Math.max(0,tutoI-1);tutoDraw()}
+ else if(a==="tend")tutoEnd();
+ else if(a==="tuto"){const o=document.getElementById("nvsheet");if(o)o.remove();tutoOpen(0)}
+ else if(a==="newsok"){setMeta({seenVer:APP_VER});draw()}
+ else if(a==="newsall")newsSheet();
+ else if(a==="newsclose"){const o=document.getElementById("nvsheet");if(o)o.remove();if((getMeta().seenVer||0)<APP_VER){setMeta({seenVer:APP_VER});draw()}}
+ else if(a==="go")go(/^\d+$/.test(d.v)?+d.v:d.v);
  else if(a==="pot"){potPg={n:d.v,m:+d.m};lastM=+d.m;go("pot")}
  else if(a==="potm"){potPg.m=Math.min(11,Math.max(0,potPg.m+(+d.v)));lastM=potPg.m;editTx=-1;draw()}
  else if(a==="sec")goSec(d.id);
@@ -1193,6 +1223,42 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  finally{loadYear(y0)}
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
+// ───────── Tutoriel et nouveautés ─────────
+const APP_VER=33;
+const TUTO=[
+{i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
+{i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil."]},
+{i:"➕",t:"Ajouter une dépense",b:"Touchez le bouton + en bas à droite : montant, catégorie, c'est noté.",l:["Un bouton « Annuler » apparaît quelques secondes si vous vous trompez.","Vous pouvez masquer ce bouton dans Réglages."]},
+{i:"🧾",t:"Factures et rappels",b:"Indiquez le jour de prélèvement de chaque facture : à cette date, elle est comptée payée toute seule.",l:["Réglages › Mon budget › Lignes du budget.","Vous choisissez aussi les factures pour lesquelles être prévenu."]},
+{i:"🎯",t:"Objectifs d'épargne",b:"Créez plusieurs objectifs avec chacun leur échéance.",l:["L'appli calcule combien mettre de côté chaque mois, et libère de la marge dès qu'un objectif est atteint."]},
+{i:"💡",t:"Conseils et simulateur",b:"L'onglet Conseils analyse vos dépenses de l'année et propose des pistes pour mieux épargner.",l:["Le simulateur « et si ? » montre l'effet d'une dépense en moins ou d'un revenu en plus.","L'onglet Annuel donne le bilan de fin d'année."]},
+{i:"🔔",t:"Alertes",b:"À 85, 90 et 98 % de votre budget du mois, l'appli vous prévient avec un petit message.",l:["Vous pouvez les désactiver dans Réglages › Mon budget › Général."]},
+{i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
+{i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
+const CHANGES=[
+{v:33,t:"Tutoriel et nouveautés",l:["Un tutoriel de bienvenue explique l'appli pas à pas.","À chaque mise à jour, ce bandeau résume ce qui change.","Retrouvez les deux dans Réglages › Application › Aide."],tuto:1},
+{v:32,t:"Cartes repliables",l:["Les cartes du mois se replient d'un toucher, l'état est mémorisé.","Nouvelle page d'accueil « Détail du mois » avec l'essentiel."]},
+{v:31,t:"Plan d'épargne",l:["Objectifs multiples : le montant à épargner tient compte de chaque échéance.","Quand un objectif est atteint, la marge libérée est répartie sur les suivants."]},
+{v:30,t:"Reste à dépenser et liste repliable",l:["Dans Budget, le total restant à dépenser est affiché.","Le détail des dépenses peut être réduit."]},
+{v:29,t:"Bouton + et rappels",l:["Ajout rapide d'une dépense depuis n'importe où.","Rappels de factures au choix, vue « Ce mois-ci »."]},
+{v:28,t:"Simulateur « et si ? » et bilan",l:["Testez l'effet d'économies ou d'un revenu en plus.","Bilan de fin d'année et conseils d'épargne personnalisés."]}];
+const emptyApp=()=>!Object.keys(S.m||{}).length&&!(S.tx||[]).length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]));
+let tutoI=0;
+function tutoOpen(i){tutoI=i||0;let o=document.getElementById("tuto");if(!o){o=document.createElement("div");o.id="tuto";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Tutoriel");document.body.appendChild(o)}tutoDraw()}
+function tutoDraw(){const o=document.getElementById("tuto");if(!o)return;const T=TUTO[tutoI],last=tutoI===TUTO.length-1;
+ o.innerHTML=`<div class="tbox"><div class="tico" aria-hidden="true">${T.i}</div><h2>${T.t}</h2><p>${T.b}</p><ul>${T.l.map(x=>`<li>${x}</li>`).join("")}</ul><div class="tdots" aria-label="Étape ${tutoI+1} sur ${TUTO.length}">${TUTO.map((_,k)=>`<i class="${k===tutoI?"on":""}"></i>`).join("")}</div><div class="tbtn">${tutoI?`<button type="button" class="ts" data-act="tprev">Retour</button>`:""}<button type="button" class="tp" data-act="${last?"tend":"tnext"}">${last?"Commencer":"Suivant"}</button></div>${last?"":`<button type="button" class="tx" data-act="tend">Passer le tutoriel</button>`}</div>`;
+ const b=o.querySelector(".tp");if(b)b.focus()}
+function tutoEnd(){const o=document.getElementById("tuto");if(o)o.remove();setMeta({tutoDone:true,seenVer:APP_VER});draw()}
+function newsList(from){return CHANGES.filter(c=>c.v>from)}
+function newsHtml(){if(isLocked()||document.getElementById("tuto"))return"";const m=getMeta();if(m.seenVer==null||m.seenVer>=APP_VER)return"";
+ const L=newsList(m.seenVer),top=L.slice(0,2),more=L.length-top.length;
+ return`<section class="news" aria-label="Nouveautés"><h3>✨ Nouveautés de cette mise à jour</h3>${top.map(c=>`<b>${esc(c.t)}</b><ul>${c.l.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}<div class="nb"><button type="button" class="p" data-act="newsok">Compris</button>${top.some(c=>c.tuto)?`<button type="button" data-act="tuto">Voir le tutoriel</button>`:""}${more>0||L.length>0?`<button type="button" data-act="newsall">${more>0?(more>1?"Voir aussi les "+more+" précédentes":"Voir aussi la précédente"):"Toutes les nouveautés"}</button>`:""}</div></section>`}
+function newsSheet(){let o=document.getElementById("nvsheet");if(o)o.remove();o=document.createElement("div");o.id="nvsheet";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Nouveautés");
+ o.innerHTML=`<div class="nvbox"><h2>✨ Nouveautés</h2>${CHANGES.map(c=>`<h3>${esc(c.t)}</h3><ul>${c.l.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}<div class="nb" style="display:flex;gap:8px;margin-top:16px"><button type="button" class="p" data-act="newsclose">Fermer</button></div></div>`;
+ o.addEventListener("click",e=>{if(e.target===o)o.remove()});document.body.appendChild(o)}
+function tutoInit(){if(isLocked()||document.getElementById("tuto"))return;const m=getMeta();
+ if(m.seenVer==null){if(emptyApp()&&!m.tutoDone){tutoOpen(0)}else setMeta({seenVer:APP_VER-1,tutoDone:true})}}
+function helpCard(){return`<div class="card"><h2>Aide</h2><p class="note" style="margin-top:0">Version ${APP_VER}.</p><div class="btns"><button data-act="tuto">Revoir le tutoriel</button><button data-act="newsall">Voir les nouveautés</button></div></div>`}
 // ───────── Démarrage ─────────
 genRec();autoPay();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length,sg=JSON.stringify(S.ap);genRec();autoPay();if((S.tx.length!==n||JSON.stringify(S.ap)!==sg)&&!isLocked())draw()}});
