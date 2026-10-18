@@ -402,11 +402,11 @@ function potCard(m){
  ${adjBlock(m,"pot")}${openBlock("pot")}${lineForm("pot")}</div>`}
 function savCard(m){
  const rl=S.ret.map((t,i)=>[t,i]).filter(([t])=>t.m===m);
- const P=S.goals.length&&S.year*12+m>=nowYM()?planAt(m):null,pl=P?P.lines:{},prest=Object.keys(pl).reduce((a,n)=>a+Math.max(0,pl[n]-v(m,"sav",n)),0);
+ const Lv=S.goals.length&&S.year*12+m>=nowYM()?planLive(m):null,pl=Lv?Lv.P.lines:{},gr=Lv?Lv.rest:{},prest=sumO(gr),nrl=Object.keys(gr).filter(n=>gr[n]>0.5).length;
  return`<div id="sec-sav" class="card sav"><h2>Épargne · ${eur(sum(m,"sav"))} versés</h2>
- ${prest>0.5&&Object.keys(pl).length>1?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${m}">🎯 Verser le prévu des objectifs · ${eur(prest)}</button>`:""}
+ ${prest>0.5&&nrl>1?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${m}">🎯 Verser le prévu des objectifs · ${eur(prest)}</button>`:""}
  <div class="row fh"><span>Ligne</span><span>Versé · Solde</span></div>
- ${vis("sav",m).map(n=>{const p=pl[n],vv=v(m,"sav",n),okp=p&&vv>=p-0.005;return`<div class="row"><span>${esc(n)}${p?`<br><small class="note">🎯 prévu ${eur(p)}${okp?" ✓":""}</small>${okp?"":`<br><button type="button" class="gp" data-act="gpay" data-m="${m}" data-n="${esc(n)}">${vv>0?"+ "+eur(p-vv):"Verser "+eur(p)}</button>`}`:""}</span><span class="two">${inp(m,"sav",n,vv)}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`}).join("")}${none("sav")}
+ ${vis("sav",m).map(n=>{const p=pl[n],r=gr[n]||0,vv=v(m,"sav",n);return`<div class="row"><span>${esc(n)}${r>0.5?`<br><small class="note">🎯 reste ${eur(r)}${p?" sur "+eur(p)+" prévus":""}</small><br><button type="button" class="gp" data-act="gpay" data-m="${m}" data-n="${esc(n)}">Verser ${eur(r)}</button>`:p?`<br><small class="note">🎯 prévu ${eur(p)} ✓</small>`:""}</span><span class="two">${inp(m,"sav",n,vv)}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`}).join("")}${none("sav")}
  <div class="row hl" style="padding:8px 10px;border-radius:8px"><span><b>Solde total</b></span><b>${eur(totSolde(m))}</b></div>
  ${S.g.sav.length?`<details class="ret" data-id="ret-${m}"${rl.length||editRet>=0?" open":""}><summary>− Retrait d'épargne${rl.length?" · "+eur(retM(m)):""}</summary><form class="add" data-form="addret" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Ligne">${S.g.sav.map(n=>`<option>${esc(n)}</option>`).join("")}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Motif"><button>Retirer</button></form>${rl.map(([t,i])=>editRet===i?`<form class="row txedit" data-form="editret" data-i="${i}"><div class="txb"><div class="txh">${fdate(t.d)} · <b>${esc(t.c)}</b></div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Motif" maxlength="60" aria-label="Motif"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="cancelret" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${fdate(t.d)} · <b>${esc(t.c)}</b>${t.n?" · "+esc(t.n):""}</span><span>−${eur(t.a)} <button class="x" data-act="edret" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="delret" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`).join("")}</details>`:""}
  <p class="note">Solde = solde du mois précédent + versé + ajustements − retraits.</p>
@@ -614,26 +614,32 @@ const capNow=()=>capSet()?+S.goalCap:planAuto();
 const nowYM=()=>{const n=new Date();return n.getFullYear()*12+n.getMonth()};
 // solde des lignes d'un objectif à la fin du mois m (m = -1 : avant janvier)
 function goalSol(g,m){return g.lines.reduce((a,n)=>a+(m<0?op("sav",n):soldeSav(Math.min(11,m),n)),0)}
-function goalG(m0,adj){const base=S.year*12+m0;return S.goals.map(g=>({name:g.name,rem:Math.max(0,g.t-goalSol(g,m0)-(adj?adj(g):0)),D:g.nd?Infinity:(g.y*12+g.m)-base,pr:!!g.pr,nd:!!g.nd,lines:g.lines,g}))}
+function goalG(m0,adj,shift){const base=S.year*12+m0-(shift||0);return S.goals.map((g,i)=>({name:g.name,rem:Math.max(0,g.t-goalSol(g,m0)-(adj?adj(g,i):0)),D:g.nd?Infinity:(g.y*12+g.m)-base,pr:!!g.pr,nd:!!g.nd,lines:g.lines,g}))}
 // mois du plan : mois en cours pour l'année en cours, 12 (après décembre) pour une année passée
 function planNowM(){const n=new Date(),y=n.getFullYear();return S.year===y?n.getMonth():S.year<y?12:0}
-// plan du mois m, calculé sur les soldes du début du mois (fixe pendant tout le mois) ; lines = montant à verser par ligne d'épargne
-function planAt(m){if(!S.goals.length)return null;const G=goalG(m-1),cap=capNow(),R=planCore(G,cap),lines={};
- (R.months[0]||[]).forEach((a,i)=>{if(a<=0.005)return;const ls=[...new Set(G[i].lines)].filter(l=>S.g.sav.includes(l)&&live(l,Math.min(m,11)));if(!ls.length)return;
-  // plusieurs lignes : réparti comme vos versements des 3 derniers mois (à parts égales sinon)
+// répartit les montants al[i] (par objectif) sur les lignes d'épargne : si un objectif a plusieurs lignes, comme vos versements des 3 derniers mois (à parts égales sinon)
+function linesOf(G,al,m){const lines={};
+ al.forEach((a,i)=>{if(a<=0.005)return;const ls=[...new Set(G[i].lines)].filter(l=>S.g.sav.includes(l)&&live(l,Math.min(m,11)));if(!ls.length)return;
   const w=ls.map(l=>{let t=0;for(let k=Math.max(0,m-3);k<Math.min(m,12);k++)t+=Math.max(0,v(k,"sav",l));return t}),W=w.reduce((x,y)=>x+y,0);
   ls.forEach((l,j)=>{const part=W>0?a*w[j]/W:a/ls.length;if(part>0.005)lines[l]=Math.max(lines[l]||0,Math.ceil(part-0.005))})});
- return{m,G,R,cap,lines,base:S.year*12+m-1}}
-// suite du plan à partir de la fin du mois m : tient compte des versements et retraits déjà faits, et suppose faits les versements prévus restants
-function planLive(m,extra){const P=planAt(m);if(!P)return null;const rest={};
- Object.keys(P.lines).forEach(n=>{rest[n]=Math.max(0,P.lines[n]-v(m,"sav",n))});
- const G=goalG(m,g=>{let a=0;[...new Set(g.lines)].forEach(n=>{a+=rest[n]||0});return a+(extra?extra(g):0)});
- return{P,G,R:planCore(G,P.cap),rest,base:S.year*12+m}}
+ return lines}
+const sumO=o=>Object.values(o).reduce((a,x)=>a+x,0);
+// total versé ce mois-ci sur les lignes d'épargne rattachées à un objectif
+const goalDep=m=>[...new Set(S.goals.flatMap(g=>g.lines))].filter(n=>S.g.sav.includes(n)).reduce((a,n)=>a+Math.max(0,v(m,"sav",n)),0);
+// plan du mois m, calculé sur les soldes du début du mois ; lines = montant prévu par ligne d'épargne, tot = total prévu
+function planAt(m){if(!S.goals.length)return null;const G=goalG(m-1),cap=capNow(),R=planCore(G,cap),al=R.months[0]||G.map(()=>0);
+ return{m,G,R,cap,lines:linesOf(G,al,m),tot:al.reduce((a,x)=>a+x,0),base:S.year*12+m-1}}
+// suite du plan à partir de l'état réel du mois m : ce qui est déjà versé (même plus que prévu, même sur une autre ligne) est déduit,
+// le reste à verser ce mois-ci est recalculé avec le montant qu'il reste, puis les mois suivants sont replanifiés.
+function planLive(m,extra){const P=planAt(m);if(!P)return null;
+ const dep=goalDep(m),capRest=Math.max(0,P.tot-dep),G0=goalG(m,null,1),R0=planCore(G0,capRest<1?0:capRest),al=capRest<1?G0.map(()=>0):(R0.months[0]||G0.map(()=>0));
+ const rest=linesOf(G0,al,m),G=goalG(m,(g,i)=>al[i]+(extra?extra(g,i):0));
+ return{P,G,R:planCore(G,P.cap),rest,dep,restTot:sumO(rest),base:S.year*12+m}}
 function planView(pm){if(pm<12)return planLive(pm);const P=planAt(12);return P&&{P,G:P.G,R:P.R,base:P.base,rest:{}}}
 const ymLab=(ym,short)=>(short?MC:MOIS)[ym%12].toLowerCase()+" "+Math.floor(ym/12);
 function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(pm);if(!Lv)return"";
  const{P,G,R,base}=Lv,cap=P.cap,auto=planAuto(),mc=Math.min(pm,11);
- const ln=pm<12?Object.keys(P.lines):[],planned=ln.reduce((a,x)=>a+P.lines[x],0),dep=ln.reduce((a,x)=>a+Math.min(v(pm,"sav",x),P.lines[x]),0),rest=planned-dep;
+ const rl=pm<12?Lv.rest:{},ln=pm<12?[...new Set([...Object.keys(P.lines),...Object.keys(rl)])]:[],planned=pm<12?sumO(P.lines):0,dep=pm<12?Lv.dep:0,rest=pm<12?Lv.restTot:0;
  const act=G.filter(x=>x.rem>0.005);
  if(!act.length&&rest<=0.5&&S.goals.every(g=>goalSol(g,mc)>=g.t-0.005))return`<div class="card sav"><h2>📅 Plan d'épargne</h2><p class="note" style="margin:0">Tous vos objectifs sont atteints 🎉</p></div>`;
  const minC=planMinCap(G);
@@ -658,8 +664,8 @@ function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(
  const bars=R.months.slice(0,Kc).map((al,k)=>{let y0=0;return idx.map(i=>{const h=al[i];if(h<=0.005)return"";const r=`<rect x="${(pl+k*bw+bw*0.12).toFixed(1)}" y="${Y(y0+h).toFixed(1)}" width="${(bw*0.76).toFixed(1)}" height="${(Y(y0)-Y(y0+h)).toFixed(1)}" style="fill:${col(i)}"/>`;y0+=h;return r}).join("")}).join("");
  const chart=`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Montant à épargner chaque mois, par objectif"><text x="${pl-4}" y="${Y(mx)+3}" text-anchor="end" font-size="9" style="fill:var(--mut)">${kE(mx)}</text><text x="${pl-4}" y="${Y(0)+3}" text-anchor="end" font-size="9" style="fill:var(--mut)">0</text>${bars}${cap>0?`<line x1="${pl}" x2="${W-pr}" y1="${Y(cap).toFixed(1)}" y2="${Y(cap).toFixed(1)}" stroke-dasharray="3 3" style="stroke:var(--mut)"/>`:""}<text x="${pl}" y="${H-8}" font-size="9" style="fill:var(--mut)">${lab(1)}</text><text x="${W-pr}" y="${H-8}" text-anchor="end" font-size="9" style="fill:var(--mut)">${lab(Kc)}</text></svg>`;
  const shared=(()=>{const seen={};let d=false;G.forEach(x=>x.lines.forEach(n=>{if(seen[n]&&seen[n]!==x.name)d=true;seen[n]=x.name}));return d})();
- const now=pm<12&&planned>0?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>À verser ce mois-ci (${MOIS[pm].toLowerCase()})</small><b>${eur(planned)}</b>${dep>0?`<small class="note">déjà versé ${eur(dep)}</small>`:""}</div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>
- <p class="note" style="margin:0 0 6px">${ln.map(x=>`${esc(x)} <b>${eur(P.lines[x])}</b>${v(pm,"sav",x)>=P.lines[x]-0.005?" ✓":""}`).join(" · ")}</p>
+ const now=pm<12&&(planned>0||dep>0)?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>${dep>0?"Reste à verser":"À verser"} en ${MOIS[pm].toLowerCase()}</small><b>${eur(rest)}</b><small class="note">prévu ${eur(planned)} · déjà versé ${eur(dep)}</small></div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>
+ <p class="note" style="margin:0 0 6px">${ln.map(x=>rl[x]>0.5?`${esc(x)} <b>${eur(rl[x])}</b>`:`${esc(x)} ✓`).join(" · ")}</p>${dep>planned+1?`<p class="note" style="margin:0 0 6px">Vous avez versé <b>${eur(dep-planned)}</b> de plus que prévu : le plan s'est adapté et les objectifs avancent plus vite.</p>`:""}
  ${rest>0.5?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${pm}">🎯 Verser le prévu du mois · ${eur(rest)}</button>`:`<p class="note" style="margin:0 0 6px;color:var(--inc)">✓ Versements du mois faits.</p>`}`
   :ft>0?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>À épargner en ${labL(1)}</small><b>${eur(ft)}</b></div><div class="kpi"><small>Minimum pour tout tenir</small><b>${eur(minC)}</b></div></div>`:"";
  return`<div class="card sav"><h2>📅 Plan d'épargne</h2>
@@ -687,22 +693,22 @@ function retImpact(m,n){const w=retN(m,n);if(!(w>0))return[];const on=i=>S.goals
  if(out.length>1&&out[0].o===0&&/garde sa date/.test(out[0].t))out[0].t+=", mais l'effort passe sur les autres objectifs";
  return out.map(x=>x.t)}
 function goalTrack(m){const n=new Date();if(S.nogoal||!S.goals.length||S.year!==n.getFullYear()||m!==n.getMonth())return"";
- const Lv=planLive(m);if(!Lv)return"";const{P,G,R}=Lv,ln=Object.keys(P.lines),lab=k=>ymLab(Lv.base+k);
- const planned=ln.reduce((a,x)=>a+P.lines[x],0),dep=ln.reduce((a,x)=>a+Math.min(v(m,"sav",x),P.lines[x]),0),rest=planned-dep;
+ const Lv=planLive(m);if(!Lv)return"";const{P,G,R}=Lv,rl=Lv.rest,ln=Object.keys(rl).filter(x=>rl[x]>0.5),lab=k=>ymLab(Lv.base+k);
+ const planned=sumO(P.lines),dep=Lv.dep,rest=Lv.restTot;
  const it=[];
- if(planned>0)it.push(rest>0.5?`<div class="gtl"><span>📌 <b>Versements prévus ce mois-ci : ${eur(planned)}</b><br><small class="note">${ln.map(x=>`${esc(x)} ${eur(P.lines[x])}${v(m,"sav",x)>=P.lines[x]-0.005?" ✓":""}`).join(" · ")}${dep>0?` · déjà versé ${eur(dep)}`:""}</small></span><button type="button" class="gp" data-act="gpayall" data-m="${m}">Verser ${eur(rest)}</button></div>`:`<div>✅ Versements du mois faits (${eur(planned)}).</div>`);
+ if(planned>0||dep>0)it.push(rest>0.5?`<div class="gtl"><span>📌 <b>Il reste ${eur(rest)} à verser ce mois-ci</b><br><small class="note">prévu ${eur(planned)}${dep>0?` · déjà versé ${eur(dep)}`:""}<br>${ln.map(x=>`${esc(x)} ${eur(rl[x])}`).join(" · ")}</small></span><button type="button" class="gp" data-act="gpayall" data-m="${m}">Verser ${eur(rest)}</button></div>`:`<div>✅ Versements du mois faits : ${eur(dep)} versés pour ${eur(planned)} prévus.${dep>planned+1?` Vous avez versé <b>${eur(dep-planned)} de plus</b> que prévu : le plan s'est adapté, vos objectifs avancent plus vite.`:""}</div>`);
  const late=G.map((x,i)=>i).filter(i=>G[i].rem>0.005&&!G[i].nd&&R.remD[i]>0.5);
  if(late.length&&P.cap>0){const need=planMinCap(G);
   it.push(`<div>🟠 ${late.map(i=>`<b>${esc(G[i].name)}</b> prend du retard : atteint en ${R.done[i]!=null?lab(R.done[i]):"plus de 40 ans"} au lieu de ${MOIS[G[i].g.m].toLowerCase()} ${G[i].g.y}.`).join("<br>")}<br>Pour tout tenir, il faudrait épargner <b>${eur(need)}</b> par mois au lieu de ${eur(P.cap)}${capSet()?"":" (votre moyenne récente)"}.</div>`)}
  [...new Set(S.ret.filter(t=>t.m===m).map(t=>t.c))].forEach(x=>{const r=retImpact(m,x);if(r.length)it.push(`<div>↩️ Retrait de <b>${eur(retN(m,x))}</b> sur ${esc(x)} : ${r.join(" ; ")}.</div>`)});
- if(m>0&&(late.length||n.getDate()<=10)){const Pp=planAt(m-1);if(Pp){const sf=Object.keys(Pp.lines).map(x=>[x,Pp.lines[x]-v(m-1,"sav",x)]).filter(z=>z[1]>1),t=sf.reduce((a,z)=>a+z[1],0);
-  if(t>1)it.push(`<div>📉 En ${MOIS[m-1].toLowerCase()}, <b>${eur(t)}</b> de moins que prévu (${sf.map(z=>esc(z[0])+" "+eur(z[1])).join(", ")}).${late.length?"":" Le plan reste tenable."}</div>`)}}
+ if(m>0&&(late.length||n.getDate()<=10)){const Pp=planAt(m-1);if(Pp){const t=Pp.tot-goalDep(m-1);
+  if(t>1)it.push(`<div>📉 En ${MOIS[m-1].toLowerCase()}, <b>${eur(t)}</b> de moins que prévu au total.${late.length?"":" Le plan reste tenable."}</div>`)}}
  if(!it.length)return"";
  return`<div class="card sav gtrack" style="margin:0 0 12px"><h2>🎯 Objectifs ce mois-ci</h2>${it.map(x=>`<div class="hl" style="margin-top:8px">${x}</div>`).join("")}${late.length?`<button type="button" class="cp" data-act="go" data-v="obj" style="margin:10px 0 0">Voir le plan d'épargne ›</button>`:""}</div>`}
 function infoToast(t,b,c){let box=document.getElementById("alertbox");if(!box){box=document.createElement("div");box.id="alertbox";box.setAttribute("role","status");box.setAttribute("aria-live","polite");document.body.appendChild(box)}
  box.innerHTML=`<button type="button" class="alertc" style="border-left-color:${c||"var(--sav)"}" aria-label="Fermer"><b>${t}</b><span>${b}</span><small>touche pour fermer</small></button>`;
  box.className="on";clearTimeout(alertTimer);const close=()=>{box.className="";clearTimeout(alertTimer)};box.firstChild.onclick=close;alertTimer=setTimeout(close,10000)}
-function goalPay(m,only){const P=planAt(m);if(!P)return;Object.keys(P.lines).forEach(n=>{if(only&&n!==only)return;if(v(m,"sav",n)<P.lines[n]-0.005)M(m)["sav|"+n]=P.lines[n]});save();draw()}
+function goalPay(m,only){const Lv=planLive(m);if(!Lv)return;Object.keys(Lv.rest).forEach(n=>{if(only&&n!==only)return;if(Lv.rest[n]>0.005)M(m)["sav|"+n]=Math.round((v(m,"sav",n)+Lv.rest[n])*100)/100});save();draw()}
 // ───────── Objectifs ─────────
 function goalChart(g,L,sol,proj,E0){
  const E=Math.max(L+1,E0!=null?E0:(g.y*12+g.m)-S.year*12),W=340,H=170,pl=44,pr=14,pt=14,pb=26,ye=S.year*12+E;
@@ -1329,7 +1335,7 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=34;
+const APP_VER=35;
 const TUTO=[
 {i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
 {i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil."]},
@@ -1341,7 +1347,7 @@ const TUTO=[
 {i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
 {i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
 const CHANGES=[
-{v:34,t:"Objectifs plus efficaces",l:["« Verser le prévu » : le montant du plan d'épargne se verse en un toucher, dans le mois ou dans Objectifs.","Nouvelle carte « Objectifs ce mois-ci » : versements prévus, objectif qui prend du retard, effet d'un retrait.","Objectifs ⭐ prioritaires et objectifs sans échéance (« dès que possible »)."]},
+{v:35,t:"Objectifs plus efficaces",l:["« Verser le prévu » : le montant du plan d'épargne se verse en un toucher, dans le mois ou dans Objectifs.","Nouvelle carte « Objectifs ce mois-ci » : versements prévus, objectif qui prend du retard, effet d'un retrait.","Objectifs ⭐ prioritaires et objectifs sans échéance (« dès que possible »).","Le plan s'adapte à ce que vous versez vraiment : un versement plus élevé sur une ligne réduit ce qu'il reste à verser ailleurs."]},
 {v:33,t:"Tutoriel et nouveautés",l:["Un tutoriel de bienvenue explique l'appli pas à pas.","À chaque mise à jour, ce bandeau résume ce qui change.","Retrouvez les deux dans Réglages › Application › Aide."],tuto:1},
 {v:32,t:"Cartes repliables",l:["Les cartes du mois se replient d'un toucher, l'état est mémorisé.","Nouvelle page d'accueil « Détail du mois » avec l'essentiel."]},
 {v:31,t:"Plan d'épargne",l:["Objectifs multiples : le montant à épargner tient compte de chaque échéance.","Quand un objectif est atteint, la marge libérée est répartie sur les suivants."]},
