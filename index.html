@@ -69,6 +69,15 @@ input.bud{width:100%;margin-top:5px;padding:5px 8px;font-size:13px}
 #undobar.on{opacity:1;transform:none;pointer-events:auto}#undobar button{margin-left:auto;border:0;background:none;color:#9fb4ff;font:600 15px/1 inherit;font-family:inherit;cursor:pointer;padding:6px}
 html.locked #fab{display:none}
 .txfold{margin:8px 0 0}.txfold>summary{color:var(--ink);font-weight:600;padding:8px 0;list-style:none;display:flex;align-items:center;gap:6px}.txfold>summary::before{content:'▸';color:var(--mut);transition:transform .15s}.txfold[open]>summary::before{transform:rotate(90deg)}.txfold>summary::-webkit-details-marker{display:none}
+.sech{display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px}.sech h2{margin:0;font-size:18px}.sech button{border:0;background:none;color:var(--brand);font:600 13px/1 inherit;font-family:inherit;padding:6px 4px;cursor:pointer}
+details.card.fold{padding:0;margin:0 0 10px;overflow:hidden;--c:var(--mut)}details.card.fold.inc{--c:var(--inc)}details.card.fold.exp{--c:var(--exp)}details.card.fold.env{--c:var(--env)}details.card.fold.sav{--c:var(--sav)}
+details.card.fold>summary{list-style:none;display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;color:var(--ink)}details.card.fold>summary::-webkit-details-marker{display:none}
+.fold .fi{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:21px;background:color-mix(in srgb,var(--c) 16%,transparent);flex:0 0 auto}
+.fold .ft{flex:1;min-width:0}.fold .ft b{display:block;font-size:16px}.fold .ft small{color:var(--mut);font-size:12.5px}
+.fold .ff{text-align:right;font-weight:700;font-size:17px;white-space:nowrap}.fold .ff small{color:var(--mut);font-weight:500;font-size:12px}
+.fold .fc{color:var(--mut);font-size:22px;line-height:1;transition:transform .15s}.fold[open] .fc{transform:rotate(90deg)}
+.fold .fbar{flex-basis:100%;height:6px;border-radius:99px;background:var(--field);overflow:hidden;margin-top:-2px}.fold .fbar i{display:block;height:100%;background:var(--c);border-radius:99px}
+.fold .foldb{padding:0 16px 16px;border-top:1px solid var(--line)}.fold .foldb>*:first-child{margin-top:12px}
 button.potlnk{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--env,var(--brand));text-decoration:underline;text-underline-offset:3px;cursor:pointer;text-align:left}
 .bt{width:100%;border-collapse:collapse;font-size:11.5px}.bt td,.bt th{padding-left:4px!important;white-space:nowrap}.bt td:last-child{white-space:normal;font-size:11px}.bt th{font-weight:600;color:var(--mut);text-align:right;padding:4px 0}.bt td{padding:7px 0;border-top:1px solid var(--line);text-align:right}.bt td:first-child,.bt th:first-child{text-align:left}
 .chart{display:flex;align-items:flex-end;gap:4px;height:140px}.chart div{flex:1;text-align:center;font-size:11px;color:var(--mut)}.chart i{display:block;margin-bottom:3px;border-radius:4px 4px 0 0;min-height:2px}
@@ -301,12 +310,28 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
-function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
+function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;if(e.tagName==="DETAILS"&&!e.open)e.open=true;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur);
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
+// ───────── Cartes repliables du mois ─────────
+function fold(html,id,cls,ico,title,fig,sub,bar,force){const o=getMeta().secOpen||{},open=force||o[id];
+ html=html.trim().replace(/^<div[^>]*>\s*<h2[^>]*>[\s\S]*?<\/h2>/,"").replace(/<\/div>$/,"");
+ return`<details class="card fold ${cls}" id="${id}" data-id="${id}"${open?" open":""}><summary><span class="fi">${ico}</span><span class="ft"><b>${title}</b><small>${sub}</small></span><span class="ff">${fig}</span><span class="fc">›</span>${bar!=null?`<span class="fbar"><i style="width:${Math.max(0,Math.min(100,bar)).toFixed(1)}%"></i></span>`:""}</summary><div class="foldb">${html}</div></details>`}
+function monthSecs(m,T){
+ const nInc=vis("inc",m).filter(n=>v(m,"inc",n)>0).length,fixP=fixPre(m),fixPaid=sum(m,"fix"),e=sum(m,"env"),
+  buds=vis("env",m).filter(n=>v(m,"bud",n)>0),B=buds.reduce((a,n)=>a+v(m,"bud",n),0),Dd=buds.reduce((a,n)=>a+spent(m,n),0),
+  nTx=S.tx.filter(t=>t.m===m&&!S.sep.includes(t.c)).length,potSp=S.g.pot.reduce((a,n)=>a+spent(m,n),0);
+ const hasPoste=[...S.g.fix,...S.g.env].some(n=>(S.g.env.includes(n)?spent(m,n):v(m,"fix",n))>0);
+ return`<div class="sech"><h2>Détail du mois</h2><span><button type="button" data-act="foldall" data-v="1">Tout déplier</button><button type="button" data-act="foldall" data-v="0">Tout replier</button></span></div>`
+ +fold(incCard(m),"sec-inc","inc","💶","Revenus",eur(T.i),(T.c&&m>0?"report "+eur(T.c)+" · ":"")+nInc+" source"+(nInc>1?"s":""),null)
+ +fold(fixCard(m),"sec-fix","exp","🧾","Factures",eur(fixPaid)+(fixP?`<small> / ${eur(fixP)}</small>`:""),fixP?(fixRest(m)>0?"reste à sortir "+eur(fixRest(m)):"tout est payé ✓"):"payées",fixP?fixPaid/fixP*100:null)
+ +fold(envCard(m),"sec-env","exp","🛒","Dépenses",eur(e),B?(Dd>B?"budgets dépassés de "+eur(Dd-B):"reste "+eur(B-Dd)+" sur "+eur(B)):nTx+" ticket"+(nTx>1?"s":""),B?Dd/B*100:null,editTx>=0)
+ +fold(potCard(m),"sec-pot","env","✉️","Enveloppes",eur(sum(m,"pot")),"versé · dépensé "+eur(potSp),null)
+ +fold(savCard(m),"sec-sav","sav","🐷","Épargne",eur(sum(m,"sav")),"solde total "+eur(totSolde(m)),null,editRet>=0)
+ +(hasPoste?fold(posteCard([m],"Dépenses par poste"),"sec-poste","exp","📊","Répartition","","dépenses par poste",null):"")}
 // ───────── Vue d'un mois ─────────
 function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile ${c}" data-act="sec" data-id="${id}">${h}</button>`:`<div class="tile ${c}">${h}</div>`;
  const rest=Math.max(T.r,0),all=T.d+T.s+T.p+rest,w=x=>Math.max(x/all*100,0).toFixed(2)+"%";
@@ -317,7 +342,7 @@ function kpis(T,link){const t=(c,id,h)=>link?`<button type="button" class="tile 
  <div class="tiles">${t("inc","inc",`<small>Revenus</small><b>${eur(T.i)}</b>`)}${t("exp","env",`<small>Dépenses</small><b>${eur(T.d)}</b>`)}${t("sav","sav",`<small>Épargne · ${pct(T.i?T.s/T.i:0)}</small><b>${eur(T.s)}</b>`)}${t("env","pot",`<small>Enveloppes</small><b>${eur(T.p)}</b>`)}</div></div>`}
 function month(m){const T=tot(m);
  const hello=!Object.keys(S.m).length&&!S.tx.length&&!Object.keys(S.yrs||{}).some(y=>+y!==S.year&&hasData(S.yrs[y]))?`<div class="hl" style="margin:0 0 12px">👋 <b>Bienvenue !</b> Adaptez d'abord vos lignes dans <b>⚙ Réglages</b> (renommer, supprimer, ajouter), puis saisissez vos revenus, factures et dépenses. Pensez à exporter vos données de temps en temps.</div>`:"";
- return hello+remind()+remCard(m)+paceCard(m)+kpis(T,true)+incCard(m)+fixCard(m)+envCard(m)+potCard(m)+savCard(m)+posteCard([m],"Dépenses par poste")}
+ return hello+remind()+remCard(m)+paceCard(m)+kpis(T,true)+monthSecs(m,T)}
 const incCard=m=>`<div id="sec-inc" class="card inc"><h2>Revenus · ${eur(sum(m,"inc"))}</h2>${S.carry&&m>0?`<div class="row"><span>Report du mois précédent</span><b>${eur(carry(m))}</b></div>`:""}${vis("inc",m).map(n=>`<label class="row"><span>${esc(n)}</span>${inp(m,"inc",n,v(m,"inc",n))}</label>`).join("")}${none("inc")}${lineForm("inc")}</div>`;
 const pre=(m,n)=>v(m,"pre",n);
 const fixPre=m=>S.g.fix.reduce((a,n)=>a+pre(m,n),0);
@@ -713,6 +738,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="pot"){potPg={n:d.v,m:+d.m};lastM=+d.m;go("pot")}
  else if(a==="potm"){potPg.m=Math.min(11,Math.max(0,potPg.m+(+d.v)));lastM=potPg.m;editTx=-1;draw()}
  else if(a==="sec")goSec(d.id);
+ else if(a==="foldall"){document.querySelectorAll("details.card.fold").forEach(x=>{x.open=d.v==="1"})}
  else if(a==="simreset"){sim={h:"an",extra:0,inc:0,ret:0,inv:true,cuts:{},cat:{}};draw()}
  else if(a==="bilanshare"){if(navigator.share)navigator.share({text:bilanTxt}).catch(()=>{});else if(navigator.clipboard)navigator.clipboard.writeText(bilanTxt).then(()=>alert("Résumé copié."))}
  else if(a==="pay"){const m=+d.m,p=pre(m,d.n),r=v(m,"fix",d.n);M(m)["fix|"+d.n]=p>0&&Math.abs(r-p)<.005?"":p;save();draw()}
@@ -755,7 +781,7 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="cloud"){if(!tokenValid())connectThenSync();else if(gState==="ok"||gState==="busy"){setTab="app";go("set")}else syncNow(true)}
  else if(a==="imp")document.getElementById("imp").click();
  else if(a==="wipe"){if(confirm("Effacer toutes vos données sur cet appareil ? Pensez à exporter d'abord. La copie Google Drive éventuelle n'est pas supprimée, et la synchronisation sera désactivée.")){store.removeItem(KEY);store.removeItem(MK);store.removeItem(LK);location.reload()}}});
-document.addEventListener("toggle",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.id==="txlist")setMeta({txClosed:!t.open})},true);
+document.addEventListener("toggle",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.id==="txlist")setMeta({txClosed:!t.open});else if(t&&t.dataset&&/^sec-/.test(t.dataset.id||"")){const o=Object.assign({},getMeta().secOpen);o[t.dataset.id]=t.open;setMeta({secOpen:o})}},true);
 document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.sim){const k=t.dataset.sim;if(k==="cut")sim.cuts[t.dataset.f]=t.checked;else if(k==="cat")sim.cat[t.dataset.c]=+t.value;else if(k==="inv")sim.inv=t.checked;else if(k==="h")sim.h=t.value;else sim[k]=t.value;const r=document.getElementById("simres");if(r)r.innerHTML=simRes();return}if(t.dataset&&t.dataset.fq==="q"){fq.q=t.value;const r=document.getElementById("txres");if(r)r.innerHTML=txRes()}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  if(t.id==="imp")importJson(t);
