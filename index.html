@@ -938,7 +938,8 @@ document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.s
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
  if(t.id==="bkfile"){const f=t.files;if(f&&f.length)bkLoad(f);t.value=""}
  else if(d.bkon!==undefined){const o=bk.ops[+d.bkon];if(o){o.on=t.checked;draw()}}
- else if(d.bkt!==undefined){const o=bk.ops[+d.bkt];if(o){o.t=t.value;o.touched=true;o.on=!!o.t&&o.t!=="-";
+ else if(d.bkt!==undefined){const o=bk.ops[+d.bkt];if(o&&/^new\|/.test(t.value)){bkNewLine(o,t.value.slice(4));draw()}
+  else if(o){o.t=t.value;o.touched=true;o.on=!!o.t&&o.t!=="-";
    bk.ops.forEach(x=>{if(x!==o&&x.key===o.key&&!x.touched&&!x.dup&&!x.off){x.t=o.t;x.on=!!x.t&&x.t!=="-"}});draw()}}
  else if(d.bkstart!==undefined){S.bank.start=Math.min(28,Math.max(1,Math.round(+t.value)||1));save();draw()}
  else if(d.gnd!==undefined){const mi=t.form&&t.form.querySelector('input[name=month]');if(mi){mi.disabled=t.checked;mi.required=!t.checked}}
@@ -1354,7 +1355,7 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=37;
+const APP_VER=40;
 const TUTO=[
 {i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
 {i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil."]},
@@ -1367,6 +1368,7 @@ const TUTO=[
 {i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
 {i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
 const CHANGES=[
+{v:40,t:"Nouvelles lignes pendant l'import",l:["Dans l'import d'un relevé PDF, chaque opération propose « ＋ Nouvelle dépense / enveloppe / facture / épargne / revenu ».","La ligne n'est créée dans votre budget qu'au moment de valider l'import, et s'applique aux opérations au libellé identique."]},
 {v:37,t:"Import d'un relevé bancaire (PDF)",l:["Réglages › Application (ou le bouton « 📄 Relevé PDF » dans les dépenses du mois) : choisissez votre relevé au format PDF.","Les opérations sont lues sur votre appareil, proposées par catégorie, et ajoutées au budget une fois vérifiées.","L'appli retient vos choix, évite les doublons et permet d'annuler l'import."]},
 {v:36,t:"Plan d'épargne plus clair",l:["Le montant « à verser » est maintenant le minimum nécessaire pour tenir vos échéances.","Votre capacité d'épargne au-delà est facultative : elle fait avancer les objectifs, sans être un reste à payer.","Dès que vous avez versé le nécessaire, le plan affiche « À jour »."]},
 {v:35,t:"Objectifs plus efficaces",l:["« Verser le prévu » : le montant du plan d'épargne se verse en un toucher, dans le mois ou dans Objectifs.","Nouvelle carte « Objectifs ce mois-ci » : versements prévus, objectif qui prend du retard, effet d'un retrait.","Objectifs ⭐ prioritaires et objectifs sans échéance (« dès que possible »).","Le plan s'adapte à ce que vous versez vraiment : un versement plus élevé sur une ligne réduit ce qu'il reste à verser ailleurs."]},
@@ -1467,7 +1469,7 @@ function bkKey(o){let s=bkNorm(o.label).replace(/\b\d{1,2}\/\d{2}(?:\/\d{2,4})?\
  // prélèvements/virements : le motif détaillé distingue deux contrats d'un même organisme
  let dt="";if(!/^CB\b/i.test(o.label)&&o.det&&o.det.length){const l=o.det.find(x=>/^LIBELLE/i.test(x))||"";dt=bkNorm(l).replace(/^LIBELLE\s*:?/,"").split(/[^A-Z]+/).filter(x=>x.length>=3).slice(0,4).join(" ")}
  return(w||bkNorm(o.label).slice(0,12))+(dt?"~"+dt:"")+(o.cr?"|c":"|d")}
-function bkOptions(){const L=g=>S.g[g].filter(n=>!S.end[n]).map(n=>[g+"|"+n,n]);return{d:[["Dépenses",L("env")],["Enveloppes",L("pot")],["Factures (payées)",L("fix")],["Épargne (versé)",L("sav")]],c:[["Revenus",L("inc")]]}}
+function bkOptions(){const L=g=>S.g[g].filter(n=>!S.end[n]).map(n=>[g+"|"+n,n]).concat((bk.pend||[]).filter(k=>k.startsWith(g+"|")&&!S.g[g].includes(k.slice(g.length+1))).map(k=>[k,k.slice(g.length+1)+" (nouvelle)"]));return{d:[["Dépenses",L("env")],["Enveloppes",L("pot")],["Factures (payées)",L("fix")],["Épargne (versé)",L("sav")]],c:[["Revenus",L("inc")]]}}
 function bkSuggest(o){const mp=(S.bank&&S.bank.map)||{};if(mp[o.key]!=null)return mp[o.key];
  const opt=bkOptions(),all=(o.cr?opt.c:opt.d).flatMap(x=>x[1]).map(x=>x[0]),T=bkNorm(o.label+" "+o.det.join(" "));
  // une ligne du budget dont le nom apparaît dans le libellé
@@ -1475,11 +1477,11 @@ function bkSuggest(o){const mp=(S.bank&&S.bank.map)||{};if(mp[o.key]!=null)retur
  if(o.cr){if(/SALAIRE|DDFIP|DGFIP|PAIE|CAF\b|FRANCE TRAVAIL|POLE EMPLOI/.test(T)){const inc=all.filter(k=>k.startsWith("inc|")),sal=inc.filter(k=>/salaire/i.test(k));return sal.length===1?sal[0]:inc.length===1?inc[0]:""}return""}
  for(const[re,nm]of BK_RULES)if(re.test(T)){const k=all.find(x=>x.startsWith("env|")&&nm.test(x));if(k)return k}
  return""}
-let bk={files:[],ops:[],start:1,busy:"",err:"",only:false,undo:null};
+let bk={files:[],ops:[],start:1,busy:"",err:"",only:false,undo:null,pend:[]};
 function bkMonth(o){const d=o.ed,day=+d.slice(8);let y=+d.slice(0,4),m=+d.slice(5,7)-1;const st=(S.bank&&+S.bank.start)||1;if(st>1&&day>=st){m++;if(m>11){m=0;y++}}return{y,m}}
 const bkSeenKey=o=>o.od+"|"+o.amt.toFixed(2)+(o.cr?"c":"d")+"|"+bkNorm(o.label).replace(/[^A-Z0-9]/g,"").slice(0,24)+"#"+o.occ;
 function bkPrep(list){const cnt={};list.forEach((o,i)=>{o.id=i;o.key=bkKey(o);const b=o.od+"|"+o.amt+o.cr+bkNorm(o.label);cnt[b]=(cnt[b]||0)+1;o.occ=cnt[b];o.sk=bkSeenKey(o);o.dup=(S.bank.seen||[]).includes(o.sk);o.t=bkSuggest(o);o.touched=false;const ym=bkMonth(o);o.off=ym.y!==S.year;o.on=!!o.t&&o.t!=="-"&&!o.dup&&!o.off})}
-async function bkLoad(files){files=[...files];if(!files.length)return;bk={files:[],ops:[],start:(S.bank&&+S.bank.start)||1,busy:"Lecture de "+files[0].name+"…",err:"",only:false,undo:null};go("bank");
+async function bkLoad(files){files=[...files];if(!files.length)return;bk={files:[],ops:[],start:(S.bank&&+S.bank.start)||1,busy:"Lecture de "+files[0].name+"…",err:"",only:false,undo:null,pend:[]};go("bank");
  try{let all=[];
   for(const f of files){bk.busy="Lecture de "+f.name+"…";draw();const pg=await pdfPages(f),r=bkParse(pg);
    if(!r.ops.length)throw new Error("Aucune opération reconnue dans « "+f.name+" ». Ce format de relevé n'est peut-être pas encore pris en charge (essayez l'export CSV de votre banque, ou un relevé « écritures de la période » classique).");
@@ -1487,8 +1489,18 @@ async function bkLoad(files){files=[...files];if(!files.length)return;bk={files:
   all.sort((a,b)=>a.od.localeCompare(b.od));bkPrep(all);bk.ops=all;bk.busy=""}
  catch(e){bk.busy="";bk.err=e&&e.message||"Lecture impossible."}
  draw();scrollTo(0,0)}
+const GNAME={env:"de la nouvelle dépense",pot:"de la nouvelle enveloppe",fix:"de la nouvelle facture",sav:"de la nouvelle ligne d'épargne",inc:"du nouveau revenu"};
+function bkNice(o){const w=bkNorm(o.label).replace(/\b\d{1,2}\/\d{2}(?:\/\d{2,4})?\b/g," ").replace(/\b(CB|PRLV SEPA|PRLV|VIR SEPA|VIR INST|VIREMENT|VIR|PAIEMENT|CARTE)\b/g," ").replace(/[^A-Z ]+/g," ").split(" ").filter(x=>x.length>=2).slice(0,2);
+ return w.map(x=>x[0]+x.slice(1).toLowerCase()).join(" ")}
+function bkNewLine(o,g){const nm=clean(prompt("Nom "+GNAME[g]+" :",bkNice(o))||"");if(!nm)return false;
+ const ex=Object.keys(S.g).find(k=>S.g[k].some(x=>x.toLowerCase()===nm.toLowerCase()));
+ if(ex&&ex!==g){alert("Ce nom existe déjà dans une autre catégorie ("+GN[ex]+"). Choisissez un autre nom.");return false}
+ const real=ex?S.g[g].find(x=>x.toLowerCase()===nm.toLowerCase()):((bk.pend.find(k=>k.startsWith(g+"|")&&k.slice(g.length+1).toLowerCase()===nm.toLowerCase())||"").slice(g.length+1)||nm);
+ const k=g+"|"+real;if(!ex&&!bk.pend.includes(k))bk.pend.push(k);o.t=k;o.touched=true;o.on=true;
+ bk.ops.forEach(x=>{if(x!==o&&x.key===o.key&&!x.touched&&!x.dup&&!x.off&&x.cr===o.cr){x.t=k;x.on=true}});return true}
 function bkSel(){return bk.ops.filter(o=>o.on&&o.t&&o.t!=="-"&&!o.off)}
 function bkApply(){const sel=bkSel();if(!sel.length)return;const snap=JSON.stringify(pack());let nT=0,nF=0;
+ sel.forEach(o=>{const g0=o.t.slice(0,o.t.indexOf("|")),n0=o.t.slice(o.t.indexOf("|")+1);if(S.g[g0]&&!S.g[g0].includes(n0))S.g[g0].push(n0)});
  sel.forEach(o=>{const m=bkMonth(o).m,g=o.t.slice(0,o.t.indexOf("|")),n=o.t.slice(o.t.indexOf("|")+1);
   if(g==="env"||g==="pot"){S.tx.push({m,d:o.ed,c:n,a:o.amt,n:o.label.replace(/^CB\s+/i,"").replace(/\s+\d{2}\/\d{2}(?:\/\d{2,4})?$/,"").slice(0,60)});nT++}
   else{const k=g+"|"+n;M(m)[k]=Math.round((v(m,g,n)+o.amt)*100)/100;nF++}});
@@ -1501,7 +1513,7 @@ function bkApply(){const sel=bkSel();if(!sel.length)return;const snap=JSON.strin
 function bankPage(){
  if(bk.busy)return`<div class="card"><h2>📄 Lecture du relevé</h2><p class="note" style="margin:0">${esc(bk.busy)}</p></div>`;
  if(!bk.ops.length)return`<div class="card"><h2>🏦 Relevé bancaire (PDF)</h2><p style="margin:0 0 10px">${esc(bk.err||"Choisissez un relevé de compte au format PDF.")}</p><div class="btns"><button data-act="bkpick">Choisir un PDF</button><button data-act="go" data-v="set">Retour</button></div></div>`;
- const opt=bkOptions(),optHtml=(o)=>{const G=o.cr?opt.c:opt.d;return`<option value=""${o.t===""?" selected":""}>À classer…</option><option value="-"${o.t==="-"?" selected":""}>Ignorer</option>`+G.map(([lab,ls])=>ls.length?`<optgroup label="${lab}">${ls.map(([k,n])=>`<option value="${esc(k)}"${o.t===k?" selected":""}>${esc(n)}</option>`).join("")}</optgroup>`:"").join("")};
+ const opt=bkOptions(),optHtml=(o)=>{const G=o.cr?opt.c:opt.d;return`<option value=""${o.t===""?" selected":""}>À classer…</option><option value="-"${o.t==="-"?" selected":""}>Ignorer</option>`+G.map(([lab,ls])=>ls.length?`<optgroup label="${lab}">${ls.map(([k,n])=>`<option value="${esc(k)}"${o.t===k?" selected":""}>${esc(n)}</option>`).join("")}</optgroup>`:"").join("")+`<optgroup label="Créer une ligne">${(o.cr?[["new|inc","＋ Nouveau revenu…"]]:[["new|env","＋ Nouvelle dépense…"],["new|pot","＋ Nouvelle enveloppe…"],["new|fix","＋ Nouvelle facture…"],["new|sav","＋ Nouvelle ligne d'épargne…"]]).map(([k,n])=>`<option value="${k}">${n}</option>`).join("")}</optgroup>`};
  const sel=bkSel(),todo=bk.ops.filter(o=>!o.t&&!o.dup&&!o.off).length,dups=bk.ops.filter(o=>o.dup).length,off=bk.ops.filter(o=>o.off).length;
  const dTot=sel.filter(o=>!o.cr).reduce((a,o)=>a+o.amt,0),cTot=sel.filter(o=>o.cr).reduce((a,o)=>a+o.amt,0);
  const files=bk.files.map(f=>{const per=f.per?`du ${fdate(f.per[0])}/${f.per[0].slice(0,4)} au ${fdate(f.per[1])}/${f.per[1].slice(0,4)}`:"";
