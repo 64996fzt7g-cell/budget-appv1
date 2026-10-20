@@ -1404,13 +1404,16 @@ const BK_AMT=/^[-+]?(?:\d{1,3}(?:[\s  .]\d{3})+|\d+),\d{2}$/;
 const bkNum=s=>{const n=parseFloat(String(s).replace(/[\s  .]/g,"").replace(",","."));return isNaN(n)?0:n};
 let pdfLib=null;
 function loadPdfJs(){if(pdfLib)return pdfLib;
+ try{if(typeof ReadableStream!=="undefined"&&!ReadableStream.prototype[Symbol.asyncIterator]){ReadableStream.prototype[Symbol.asyncIterator]=function(){const r=this.getReader();return{next:()=>r.read(),return:()=>{try{r.releaseLock()}catch(e){}return Promise.resolve({done:true,value:undefined})},[Symbol.asyncIterator](){return this}}}}}catch(e){}
  pdfLib=import("./pdf.min.mjs").then(m=>{m.GlobalWorkerOptions.workerSrc=new URL("pdf.worker.min.mjs",location.href).href;return m}).catch(e=>{pdfLib=null;throw new Error("Le lecteur PDF n'a pas pu être chargé (fichiers pdf.min.mjs et pdf.worker.min.mjs absents, ou pas de connexion la première fois).")});
  return pdfLib}
 async function pdfPages(file){const lib=await loadPdfJs(),buf=new Uint8Array(await file.arrayBuffer());
  let doc;try{doc=await lib.getDocument({data:buf}).promise}catch(e){throw new Error(e&&e.name==="PasswordException"?"Ce PDF est protégé par un mot de passe : enregistrez-en une copie sans mot de passe.":"Ce fichier n'est pas un PDF lisible.")}
  const pages=[];
- for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),vp=pg.getViewport({scale:1}),tc=await pg.getTextContent(),items=[];
-  tc.items.forEach(it=>{if(it.str==null||!String(it.str).trim())return;items.push({s:String(it.str),x:it.transform[4],y:it.transform[5],w:it.width||0,h:Math.abs(it.transform[3])||Math.abs(it.height)||9})});
+ for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),vp=pg.getViewport({scale:1}),items=[],tcItems=[];
+  // lecture manuelle du flux (Safari ne sait pas « for await » sur un ReadableStream, que getTextContent utilise)
+  const rd=pg.streamTextContent().getReader();for(;;){const r=await rd.read();if(r.done)break;tcItems.push(...r.value.items)}
+  tcItems.forEach(it=>{if(it.str==null||!String(it.str).trim())return;items.push({s:String(it.str),x:it.transform[4],y:it.transform[5],w:it.width||0,h:Math.abs(it.transform[3])||Math.abs(it.height)||9})});
   pages.push({w:vp.width,h:vp.height,items})}
  try{doc.destroy()}catch(e){}
  return pages}
