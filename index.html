@@ -218,6 +218,14 @@ button.txr:active{background:var(--field)}
 .chk>input[type=checkbox]{flex:none}
 .gtl{display:flex;align-items:center;gap:10px;justify-content:space-between}.gtl .gp{margin-top:0;flex:none}
 .cp.gcta{background:var(--sav);color:var(--herotxt);width:100%;padding:11px}
+.bkrow{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:start;padding:9px 0;border-top:1px solid var(--line)}.bkrow:first-child{border-top:0}
+.bkrow.todo{border-left:3px solid var(--env);padding-left:8px}.bkrow.dis{opacity:.55}.bkrow input[type=checkbox]{width:20px;height:20px;margin:2px 0 0}
+.bkl{min-width:0}.bkl b{display:block;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bkl small{color:var(--mut)}
+.bkr{grid-column:2;display:flex;gap:8px;align-items:center}.bkr select{flex:1;min-width:0;font:inherit;font-size:14px;background:var(--field);color:var(--ink);border:0;border-radius:10px;padding:8px}
+.bka{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:84px}.bka.c{color:var(--inc)}.bka.d{color:var(--exp)}
+.bkbar{background:linear-gradient(transparent,var(--bg) 35%);margin-top:-6px;position:sticky;bottom:calc(76px + env(safe-area-inset-bottom));z-index:40;display:flex;gap:8px;padding:10px 0}
+.bkgo{flex:1;border:0;background:var(--brand);color:var(--herotxt);border-radius:14px;padding:14px;font:inherit;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 6px 18px rgba(30,30,80,.3)}.bkgo:disabled{opacity:.45}
+.bkx{border:0;background:var(--card);color:var(--ink);border-radius:14px;padding:14px;font:inherit;cursor:pointer;border:1px solid var(--line)}
 #tuto{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;background:rgba(10,10,25,.62);padding:16px}
 #tuto .tbox{width:100%;max-width:440px;max-height:calc(100dvh - 32px);overflow:auto;background:var(--card);color:var(--ink);border-radius:24px;padding:22px 20px calc(18px + env(safe-area-inset-bottom));box-shadow:0 20px 60px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:12px}
 #tuto .tico{width:72px;height:72px;border-radius:22px;background:var(--field);display:flex;align-items:center;justify-content:center;font-size:38px;margin:0 auto}
@@ -248,6 +256,7 @@ button.txr:active{background:var(--field)}
 <header style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 id="ttl">Mon budget</h1><span style="display:flex;gap:8px;align-items:center"><button id="cloud" class="chip" data-act="cloud" hidden></button><button id="yr" class="chip" data-act="home" aria-label="Choisir l'année"></button></span></header>
 <nav id="nav" aria-label="Mois"></nav>
 <main id="app"></main>
+<input id="bkfile" type="file" accept=".pdf,application/pdf" multiple hidden>
 <nav id="tabs" aria-label="Navigation principale"></nav>
 <footer style="max-width:1000px;margin:auto;padding:0 16px 28px;text-align:center"><a href="privacy.html" style="color:var(--mut);font-size:13px">Confidentialité</a></footer>
 <script>
@@ -263,7 +272,7 @@ const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Ép
 const YKEYS=["m","tx","ret","open","ap"];let YC={};
 const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],rec:[],due:{},rem:{},ap:{},yrs:{},end:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
- m:{},tx:[],ret:[],open:{},goals:[]});
+ m:{},tx:[],ret:[],open:{},goals:[],bank:{map:{},seen:[],start:1}});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
  if(o.yrs&&typeof o.yrs==="object"&&o.yrs[o.year]){const a=o.yrs[o.year];YKEYS.forEach(k=>{if(a[k]!=null)o[k]=a[k]})}
  for(const k in d)if(o[k]==null)o[k]=d[k];
@@ -273,7 +282,8 @@ function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o)
  if(Array.isArray(o.rec))o.rec.forEach(r=>{if(r.fy==null){r.fy=o.year;r.skip=(r.skip||[]).map(x=>x<100?o.year*100+x:x)}});
  Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
- ["tx","ret","goals","nobal","sep","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});return o}
+ ["tx","ret","goals","nobal","sep","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});
+ o.bank=Object.assign({map:{},seen:[],start:1},o.bank&&typeof o.bank==="object"&&!Array.isArray(o.bank)?o.bank:{});if(!Array.isArray(o.bank.seen))o.bank.seen=[];if(!o.bank.map||typeof o.bank.map!=="object")o.bank.map={};return o}
 let S;try{S=normalize(JSON.parse(store.getItem(KEY)||"null"))}catch(e){S=DEF()}
 // ───────── Plusieurs années ─────────
 function pack(x){x=x||S;const o={};for(const k in x)if(!YKEYS.includes(k))o[k]=x[k];o.yrs=Object.assign({},x.yrs);o.yrs[x.year]={m:x.m,tx:x.tx,ret:x.ret,open:x.open,ap:x.ap};return o}
@@ -333,14 +343,14 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
  n.hidden=typeof cur!=="number";
  const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
- document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":k==="an"?cur==="an"||cur==="bilan":k==="tips"?cur==="tips"||cur==="sim":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":k==="an"?cur==="an"||cur==="bilan":k==="tips"?cur==="tips"||cur==="sim":k==="set"?cur==="set"||cur==="bank":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;if(e.tagName==="DETAILS"&&!e.open)e.open=true;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");try{tutoInit()}catch(e){}
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=newsHtml()+(cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
+ app.innerHTML=newsHtml()+(cur==="bank"?bankPage():cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
 // ───────── Cartes repliables du mois ─────────
@@ -389,7 +399,7 @@ function envCard(m){
  const list=S.tx.map((t,i)=>[t,i]).filter(([t])=>t.m===m&&!S.sep.includes(t.c)).sort((a,b)=>(b[0].d||"").localeCompare(a[0].d||""));
  const opt=g=>vis(g,m).map(n=>`<option>${esc(n)}</option>`).join("");
  const bars=vis("env",m).map(n=>{const a=spent(m,n),b=v(m,"bud",n),p=b?Math.min(a/b,1)*100:0;return`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)}${b?" / "+eur(b):""}</span></div>${b?`<div class="note" style="text-align:right;margin:2px 0 3px;color:${a>b?"var(--exp)":"var(--mut)"}">${a>b?"Dépassé de "+eur(a-b):"Reste "+eur(b-a)}</div><div class="bar"><i style="width:${p}%;background:${a>b?"var(--exp)":"var(--inc)"}"></i></div>`:""}<input class="bud" type="number" inputmode="decimal" step="0.01" placeholder="Budget" value="${b||""}" data-m="${m}" data-k="bud" data-n="${esc(n)}" aria-label="Budget ${esc(n)}"></div>`}).join("");
- return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2><button type="button" class="srch" data-act="txs">🔍 Rechercher dans toutes les dépenses</button>
+ return`<div id="sec-env" class="card exp"><h2>Dépenses du mois · ${eur(sum(m,"env"))}</h2><button type="button" class="srch" data-act="txs">🔍 Rechercher dans toutes les dépenses</button> <button type="button" class="srch" data-act="bkpick">📄 Relevé PDF</button>
  ${S.g.env.length+S.g.pot.length?`<form class="add" data-form="addtx" data-m="${m}"><input type="date" name="d" value="${dflt(m)}" ${dRange(m)} required><select name="c" aria-label="Catégorie">${S.g.env.length?`<optgroup label="Dépenses">${opt("env")}</optgroup>`:""}${S.g.pot.some(n=>!S.sep.includes(n))?`<optgroup label="Enveloppes">${vis("pot",m).filter(n=>!S.sep.includes(n)).map(n=>`<option>${esc(n)}</option>`).join("")}</optgroup>`:""}</select><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" placeholder="Montant" required><input name="n" placeholder="Note"><button>Ajouter</button></form>`:`<p class="note">Ajoutez d'abord une ligne de dépenses.</p>`}
  <details class="txfold" data-id="txlist"${getMeta().txClosed&&editTx<0?"":" open"}><summary>Détail des dépenses · ${list.length} ticket${list.length>1?"s":""}</summary>${list.length?list.map(([t,i])=>{const hd=`${fdate(t.d)} · <b>${esc(t.c)}</b>`;return editTx===i?`<form class="row txedit" data-form="edittx" data-i="${i}"><div class="txb"><div class="txh">${hd}</div><div class="txi"><input name="n" value="${esc(t.n||"")}" placeholder="Intitulé" maxlength="60" aria-label="Intitulé"><input type="number" name="a" inputmode="decimal" step="0.01" min="0.01" value="${t.a}" required aria-label="Montant"></div></div><div class="acts"><button class="ok">OK</button><button type="button" class="x" data-act="canceltx" aria-label="Annuler">✕</button></div></form>`:`<div class="row"><span>${hd}${t.n?" · "+esc(t.n):""}</span><span>${eur(t.a)} ${t.r?`<span class="x" title="Dépense récurrente" aria-label="Récurrente">↻</span>`:`<button class="x" data-act="mkrec" data-i="${i}" aria-label="Répéter chaque mois" title="Répéter chaque mois">↻</button>`}<button class="x" data-act="edtx" data-i="${i}" aria-label="Modifier">✎</button><button class="x" data-act="deltx" data-i="${i}" aria-label="Supprimer">✕</button></span></div>`}).join(""):`<p class="note">Aucune dépense saisie ce mois-ci.</p>`}</details>
  <h2 style="margin-top:16px">Budgets (facultatif)</h2>${budSum(m)}<div class="grid">${bars}</div>${none("env")}${lineForm("env")}</div>`}
@@ -793,6 +803,7 @@ function settings(){
  return seg+`${helpCard()}${lockCard()}
  <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ».${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
  <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button><button data-act="exp">Exporter (JSON)</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
+ ${bankCard()}
  <div class="card"><h2>Tableur (CSV)</h2><p class="note" style="margin-top:0">Exportez vos budgets et vos dépenses pour Excel ou Numbers, ou importez un tableau (par exemple une ancienne année). Enregistrez votre tableur au format CSV avant de l'importer.</p><div class="btns"><button data-act="csvb">Exporter le budget</button><button data-act="csvt">Exporter les dépenses</button><button data-act="csvi">Importer un CSV</button></div><input id="impcsv" type="file" accept=".csv,text/csv,text/plain" hidden>
  <details data-id="csvhelp" style="margin-top:10px"><summary>Format du fichier à importer</summary><p class="note"><b>Budget :</b> colonnes <i>Année ; Mois ; Groupe ; Ligne ; Type ; Montant</i>, une ligne par montant.<br>Groupe / Type : Revenus (Réel) · Factures (Prévu, Payé) · Dépenses (Budget) · Enveloppes (Versé, Ajustement) · Épargne (Versé, Ajustement, Retrait). Mois « Départ » avec Type « Solde de départ » pour les soldes de début d'année. Les lignes inconnues sont créées.<br><b>Dépenses :</b> colonnes <i>Année ; Date ; Mois ; Catégorie ; Montant ; Note</i> (date AAAA-MM-JJ ou JJ/MM/AAAA). La catégorie doit déjà exister.</p><div class="btns"><button data-act="csvm">Télécharger un modèle</button></div></details></div>
  ${gd}
@@ -870,6 +881,11 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="tprev"){tutoI=Math.max(0,tutoI-1);tutoDraw()}
  else if(a==="tend")tutoEnd();
  else if(a==="tuto"){const o=document.getElementById("nvsheet");if(o)o.remove();tutoOpen(0)}
+ else if(a==="bkpick"){const i=document.getElementById("bkfile");if(i)i.click()}
+ else if(a==="bkall"){bk.ops.forEach(o=>{if(!o.off&&!o.dup&&o.t&&o.t!=="-")o.on=d.v==="1"});draw()}
+ else if(a==="bkonly"){bk.only=!bk.only;draw()}
+ else if(a==="bkgo")bkApply();
+ else if(a==="bkcancel"){bk.ops=[];bk.files=[];bk.err="";go("set")}
  else if(a==="gpay")goalPay(+d.m,d.n);
  else if(a==="gpayall")goalPay(+d.m);
  else if(a==="newsok"){setMeta({seenVer:APP_VER});draw()}
@@ -925,7 +941,12 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
 document.addEventListener("toggle",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.id==="txlist")setMeta({txClosed:!t.open});else if(t&&t.dataset&&/^sec-/.test(t.dataset.id||"")){const o=Object.assign({},getMeta().secOpen);o[t.dataset.id]=t.open;setMeta({secOpen:o})}},true);
 document.addEventListener("input",e=>{const t=e.target;if(t.dataset&&t.dataset.sim){const k=t.dataset.sim;if(k==="cut")sim.cuts[t.dataset.f]=t.checked;else if(k==="cat")sim.cat[t.dataset.c]=+t.value;else if(k==="inv")sim.inv=t.checked;else if(k==="h")sim.h=t.value;else sim[k]=t.value;const r=document.getElementById("simres");if(r)r.innerHTML=simRes();return}if(t.dataset&&t.dataset.fq==="q"){fq.q=t.value;const r=document.getElementById("txres");if(r)r.innerHTML=txRes()}});
 document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
- if(d.gnd!==undefined){const mi=t.form&&t.form.querySelector('input[name=month]');if(mi){mi.disabled=t.checked;mi.required=!t.checked}}
+ if(t.id==="bkfile"){const f=t.files;if(f&&f.length)bkLoad(f);t.value=""}
+ else if(d.bkon!==undefined){const o=bk.ops[+d.bkon];if(o){o.on=t.checked;draw()}}
+ else if(d.bkt!==undefined){const o=bk.ops[+d.bkt];if(o){o.t=t.value;o.touched=true;o.on=!!o.t&&o.t!=="-";
+   bk.ops.forEach(x=>{if(x!==o&&x.key===o.key&&!x.touched&&!x.dup&&!x.off){x.t=o.t;x.on=!!x.t&&x.t!=="-"}});draw()}}
+ else if(d.bkstart!==undefined){S.bank.start=Math.min(28,Math.max(1,Math.round(+t.value)||1));save();draw()}
+ else if(d.gnd!==undefined){const mi=t.form&&t.form.querySelector('input[name=month]');if(mi){mi.disabled=t.checked;mi.required=!t.checked}}
  else if(t.id==="imp")importJson(t);
  else if(t.id==="impcsv"){if(t.files[0])importCsv(t.files[0]);t.value=""}
  else if(d.fq!==undefined){fq[d.fq]=t.value;const r=document.getElementById("txres");if(r)r.innerHTML=txRes()}
@@ -1338,18 +1359,20 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=36;
+const APP_VER=37;
 const TUTO=[
 {i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
 {i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil."]},
 {i:"➕",t:"Ajouter une dépense",b:"Touchez le bouton + en bas à droite : montant, catégorie, c'est noté.",l:["Un bouton « Annuler » apparaît quelques secondes si vous vous trompez.","Vous pouvez masquer ce bouton dans Réglages."]},
 {i:"🧾",t:"Factures et rappels",b:"Indiquez le jour de prélèvement de chaque facture : à cette date, elle est comptée payée toute seule.",l:["Réglages › Mon budget › Lignes du budget.","Vous choisissez aussi les factures pour lesquelles être prévenu."]},
+{i:"🏦",t:"Importer un relevé",b:"Plus besoin de tout saisir : importez le PDF de votre relevé de compte.",l:["Réglages › Application › « Choisir un relevé PDF ». Le fichier est lu sur votre appareil, il n'est envoyé nulle part.","Vérifiez les catégories proposées : l'appli les retient pour le mois suivant et ne réimporte pas deux fois la même opération."]},
 {i:"🎯",t:"Objectifs d'épargne",b:"Créez plusieurs objectifs, avec une échéance ou « dès que possible ». Marquez ⭐ ceux qui passent avant tout.",l:["L'appli calcule combien mettre de côté chaque mois, et libère de la marge dès qu'un objectif est atteint.","Dans le mois, « Verser le prévu » remplit vos lignes d'épargne d'un toucher, et l'appli vous prévient si un objectif prend du retard."]},
 {i:"💡",t:"Conseils et simulateur",b:"L'onglet Conseils analyse vos dépenses de l'année et propose des pistes pour mieux épargner.",l:["Le simulateur « et si ? » montre l'effet d'une dépense en moins ou d'un revenu en plus.","L'onglet Annuel donne le bilan de fin d'année."]},
 {i:"🔔",t:"Alertes",b:"À 85, 90 et 98 % de votre budget du mois, l'appli vous prévient avec un petit message.",l:["Vous pouvez les désactiver dans Réglages › Mon budget › Général."]},
 {i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
 {i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
 const CHANGES=[
+{v:37,t:"Import d'un relevé bancaire (PDF)",l:["Réglages › Application (ou le bouton « 📄 Relevé PDF » dans les dépenses du mois) : choisissez votre relevé au format PDF.","Les opérations sont lues sur votre appareil, proposées par catégorie, et ajoutées au budget une fois vérifiées.","L'appli retient vos choix, évite les doublons et permet d'annuler l'import."]},
 {v:36,t:"Plan d'épargne plus clair",l:["Le montant « à verser » est maintenant le minimum nécessaire pour tenir vos échéances.","Votre capacité d'épargne au-delà est facultative : elle fait avancer les objectifs, sans être un reste à payer.","Dès que vous avez versé le nécessaire, le plan affiche « À jour »."]},
 {v:35,t:"Objectifs plus efficaces",l:["« Verser le prévu » : le montant du plan d'épargne se verse en un toucher, dans le mois ou dans Objectifs.","Nouvelle carte « Objectifs ce mois-ci » : versements prévus, objectif qui prend du retard, effet d'un retrait.","Objectifs ⭐ prioritaires et objectifs sans échéance (« dès que possible »).","Le plan s'adapte à ce que vous versez vraiment : un versement plus élevé sur une ligne réduit ce qu'il reste à verser ailleurs."]},
 {v:33,t:"Tutoriel et nouveautés",l:["Un tutoriel de bienvenue explique l'appli pas à pas.","À chaque mise à jour, ce bandeau résume ce qui change.","Retrouvez les deux dans Réglages › Application › Aide."],tuto:1},
@@ -1375,6 +1398,127 @@ function newsSheet(){let o=document.getElementById("nvsheet");if(o)o.remove();o=
 function tutoInit(){if(isLocked()||document.getElementById("tuto"))return;const m=getMeta();
  if(m.seenVer==null){if(emptyApp()&&!m.tutoDone){tutoOpen(0)}else setMeta({seenVer:APP_VER-1,tutoDone:true})}}
 function helpCard(){return`<div class="card"><h2>Aide</h2><p class="note" style="margin-top:0">Version ${APP_VER}.</p><div class="btns"><button data-act="tuto">Revoir le tutoriel</button><button data-act="newsall">Voir les nouveautés</button></div></div>`}
+// ───────── Import d'un relevé bancaire (PDF) ─────────
+// Le PDF est lu sur l'appareil (pdf.js, fichiers pdf.min.mjs et pdf.worker.min.mjs) : rien n'est envoyé ailleurs.
+const BK_AMT=/^[-+]?(?:\d{1,3}(?:[\s  .]\d{3})+|\d+),\d{2}$/;
+const bkNum=s=>{const n=parseFloat(String(s).replace(/[\s  .]/g,"").replace(",","."));return isNaN(n)?0:n};
+let pdfLib=null;
+function loadPdfJs(){if(pdfLib)return pdfLib;
+ pdfLib=import("./pdf.min.mjs").then(m=>{m.GlobalWorkerOptions.workerSrc=new URL("pdf.worker.min.mjs",location.href).href;return m}).catch(e=>{pdfLib=null;throw new Error("Le lecteur PDF n'a pas pu être chargé (fichiers pdf.min.mjs et pdf.worker.min.mjs absents, ou pas de connexion la première fois).")});
+ return pdfLib}
+async function pdfPages(file){const lib=await loadPdfJs(),buf=new Uint8Array(await file.arrayBuffer());
+ let doc;try{doc=await lib.getDocument({data:buf}).promise}catch(e){throw new Error(e&&e.name==="PasswordException"?"Ce PDF est protégé par un mot de passe : enregistrez-en une copie sans mot de passe.":"Ce fichier n'est pas un PDF lisible.")}
+ const pages=[];
+ for(let i=1;i<=doc.numPages;i++){const pg=await doc.getPage(i),vp=pg.getViewport({scale:1}),tc=await pg.getTextContent(),items=[];
+  tc.items.forEach(it=>{if(it.str==null||!String(it.str).trim())return;items.push({s:String(it.str),x:it.transform[4],y:it.transform[5],w:it.width||0,h:Math.abs(it.transform[3])||Math.abs(it.height)||9})});
+  pages.push({w:vp.width,h:vp.height,items})}
+ try{doc.destroy()}catch(e){}
+ return pages}
+// regroupe les morceaux de texte en lignes puis en cellules (un grand espace sépare deux colonnes)
+function bkLines(items){const its=items.slice().sort((a,b)=>b.y-a.y||a.x-b.x),lines=[];
+ its.forEach(it=>{const L=lines[lines.length-1];if(L&&Math.abs(L.y-it.y)<=Math.max(2.2,it.h*0.35)){L.its.push(it)}else lines.push({y:it.y,its:[it]})});
+ return lines.map(L=>{L.its.sort((a,b)=>a.x-b.x);const ch=[];
+  L.its.forEach(it=>{const p=ch[ch.length-1],gap=p?it.x-(p.x+p.w):1e9;
+   if(p&&gap<Math.max(0.7*it.h,3.2)){p.s+=(gap>0.12*it.h?" ":"")+it.s;p.w=it.x+it.w-p.x}else ch.push({s:it.s,x:it.x,w:it.w,h:it.h})});
+  ch.forEach(c=>{c.s=c.s.replace(/\s+/g," ").trim()});
+  // « 3 » + « 500,75 » séparés par un petit espace : un seul montant
+  for(let i=ch.length-2;i>=0;i--){const a=ch[i],b=ch[i+1];if(/^[-+]?\d{1,3}$/.test(a.s)&&/^\d{3},\d{2}$/.test(b.s)&&b.x-(a.x+a.w)<14){a.s+=" "+b.s;a.w=b.x+b.w-a.x;ch.splice(i+1,1)}}
+  return{y:L.y,ch:ch.filter(c=>c.s)}}).filter(L=>L.ch.length)}
+function bkParse(pages){const ops=[],out={ops,anc:null,nou:null,per:null,warn:[]};let hdr=null,cur=null,perD=null,noCols=false;
+ const toD=(d,m,y)=>new Date(y,m-1,d),iso=d=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+ pages.forEach(P=>{const lines=bkLines(P.items);cur=null;
+  lines.forEach(L=>{const ch=L.ch,txt=ch.map(c=>c.s).join(" ");
+   const hd=ch.find(c=>/^D[ÉE]BITS?$/i.test(c.s)),hc=ch.find(c=>/^CR[ÉE]DITS?$/i.test(c.s));
+   if(hd&&hc){const hl=ch.find(c=>/^LIBELL/i.test(c.s)),hdt=ch.find(c=>/^DATE$/i.test(c.s));hdr={debR:hd.x+hd.w,creR:hc.x+hc.w,libX:hl?hl.x:ch[0].x+40,dateX:hdt?hdt.x:ch[0].x};cur=null;return}
+   const pm=txt.match(/du (\d\d)[./](\d\d)[./](\d{4}) au (\d\d)[./](\d\d)[./](\d{4})/);if(pm&&!perD){perD={s:toD(+pm[1],+pm[2],+pm[3]),e:toD(+pm[4],+pm[5],+pm[6])};out.per=[iso(perD.s),iso(perD.e)]}
+   const first=ch[0];
+   if(/^\d{1,2}[./]\d{2}(?:[./]\d{2,4})?$/.test(first.s)&&ch.length>=2&&(!hdr||first.x<hdr.dateX+35)){
+    const am=ch.filter((c,i)=>i>0&&BK_AMT.test(c.s)&&(!hdr||c.x+c.w>hdr.debR-70));
+    if(!am.length){cur=null;return}
+    const a=am[am.length-1],xr=a.x+a.w;let cr;
+    if(hdr)cr=Math.abs(xr-hdr.creR)<Math.abs(xr-hdr.debR);else{noCols=true;cr=!/^-/.test(a.s)&&/^\+/.test(a.s)}
+    const amt=Math.abs(bkNum(a.s));
+    let mid=ch.filter((c,i)=>i>0&&c!==a).map(c=>c.s),vd=null;
+    mid=mid.filter(s=>{if(/^\d{2}[./]\d{2}[./]\d{2,4}$/.test(s)){if(!vd)vd=s;return false}return true});
+    let label=mid.join(" ").replace(/\s+(\d{2})[./](\d{2})[./](\d{2,4})$/,(m0,d0,m1,y1)=>{if(!vd)vd=d0+"."+m1+"."+y1;return""}).trim();
+    if(/ANCIEN SOLDE|SOLDE PR[ÉE]C/i.test(label)){out.anc=cr?amt:-amt;cur=null;return}
+    if(/NOUVEAU SOLDE|SOLDE EN EUROS|SOLDE (?:AU|FINAL)/i.test(label)){out.nou=cr?amt:-amt;cur=null;return}
+    if(/^TOTAUX?/i.test(label)||/TOTAL DES MOUVEMENTS/i.test(label)){cur=null;return}
+    const dm=first.s.match(/^(\d{1,2})[./](\d{2})(?:[./](\d{2,4}))?$/),dd=+dm[1],mo=+dm[2];let od;
+    if(dm[3]){const yy=+dm[3];od=toD(dd,mo,yy<100?2000+yy:yy)}
+    else if(vd){const q=vd.match(/(\d{2})[./](\d{2})[./](\d{2,4})/),vy=+q[3]<100?2000+ +q[3]:+q[3],v0=toD(+q[1],+q[2],vy);od=toD(dd,mo,vy);if(od>new Date(v0.getTime()+10*864e5))od=toD(dd,mo,vy-1)}
+    else if(perD){od=toD(dd,mo,perD.e.getFullYear());if(od>new Date(perD.e.getTime()+7*864e5))od=toD(dd,mo,perD.e.getFullYear()-1)}
+    else od=toD(dd,mo,S.year);
+    // date d'achat par carte : « CB COMMERCE 05/07/25 » ou « CB RETRAIT DU 08/07 »
+    let ed=od;const cb=label.match(/(?:^|\s)(\d{2})\/(\d{2})(?:\/(\d{2,4}))?\s*$/);
+    if(cb&&/^CB\b|CARTE|RETRAIT/i.test(label)){let y2=cb[3]?(+cb[3]<100?2000+ +cb[3]:+cb[3]):od.getFullYear();let d2=toD(+cb[1],+cb[2],y2);if(!cb[3]&&d2>new Date(od.getTime()+3*864e5))d2=toD(+cb[1],+cb[2],y2-1);if(Math.abs(d2-od)<=40*864e5)ed=d2}
+    cur={od:iso(od),ed:iso(ed),label,det:[],amt,cr};ops.push(cur);return}
+   if(cur&&hdr&&first.x>=hdr.libX-8&&first.x<=hdr.libX+30&&!/Page \d|RELEVE DE COMPTE|Cr[ée]dit Lyonnais|^ECRITURES/i.test(txt)&&cur.det.length<8)cur.det.push(txt)});
+  cur=null});
+ if(noCols&&ops.length)out.warn.push("Colonnes Débit/Crédit non reconnues : sens des montants à vérifier ligne par ligne.");
+ if(out.anc!=null&&out.nou!=null){const sd=ops.reduce((a,o)=>a+(o.cr?o.amt:-o.amt),0),diff=Math.round((out.anc+sd-out.nou)*100)/100;out.diff=diff}
+ return out}
+// ── catégories ──
+const BK_RULES=[[/LECLERC|CARREFOUR|LIDL|AUCHAN|INTERMARCHE|MONOPRIX|CASINO|FRANPRIX|ALDI|U EXPRESS|SUPER U|PICARD|BIOCOOP|GRAND FRAIS|NETTO/i,/cours|aliment|supermarch/i],
+ [/\bESSENCE\b|\bTOTAL(?:ENERGIES)?\b|\bESSO\b|\bSHELL\b|\bBP\b|\bSNCF\b|\bRATP\b|NAVIGO|\bUBER\b|PEAGE|\bAPRR\b|\bSANEF\b|PARKING|TRANSDEV|\bAVIA\b/i,/transport|carburant|voiture|auto/i],
+ [/PHARMA|DOCTEUR|MEDECIN|OPTIQUE|DENTISTE|LABORATOIRE|HOPITAL|DOCTOLIB|\bKINE\b/i,/sant|pharma|m[ée]dic/i],
+ [/RESTAU|MCDO|MC DONALD|BURGER|CINEMA|NETFLIX|SPOTIFY|DECATHLON|FNAC|CULTURA|STEAM|DEEZER|DISNEY/i,/loisir|sortie|resto|culture/i]];
+const bkNorm=s=>String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toUpperCase();
+function bkKey(o){let s=bkNorm(o.label).replace(/\b\d{1,2}\/\d{2}(?:\/\d{2,4})?\b/g," ").replace(/\b(CB|PRLV SEPA|PRLV|VIR SEPA|VIR INST|VIREMENT|VIR|PAIEMENT|CARTE|DU)\b/g," ").replace(/\b\d{3,}\b/g," ").replace(/[^A-Z]+/g," ").trim();
+ const w=s.split(" ").filter(x=>x.length>=3).slice(0,2).join(" ");
+ // prélèvements/virements : le motif détaillé distingue deux contrats d'un même organisme
+ let dt="";if(!/^CB\b/i.test(o.label)&&o.det&&o.det.length){const l=o.det.find(x=>/^LIBELLE/i.test(x))||"";dt=bkNorm(l).replace(/^LIBELLE\s*:?/,"").split(/[^A-Z]+/).filter(x=>x.length>=3).slice(0,4).join(" ")}
+ return(w||bkNorm(o.label).slice(0,12))+(dt?"~"+dt:"")+(o.cr?"|c":"|d")}
+function bkOptions(){const L=g=>S.g[g].filter(n=>!S.end[n]).map(n=>[g+"|"+n,n]);return{d:[["Dépenses",L("env")],["Enveloppes",L("pot")],["Factures (payées)",L("fix")],["Épargne (versé)",L("sav")]],c:[["Revenus",L("inc")]]}}
+function bkSuggest(o){const mp=(S.bank&&S.bank.map)||{};if(mp[o.key]!=null)return mp[o.key];
+ const opt=bkOptions(),all=(o.cr?opt.c:opt.d).flatMap(x=>x[1]).map(x=>x[0]),T=bkNorm(o.label+" "+o.det.join(" "));
+ // une ligne du budget dont le nom apparaît dans le libellé
+ for(const k of all){const nm=bkNorm(k.slice(k.indexOf("|")+1)),ws=nm.split(/[^A-Z0-9]+/).filter(w=>w.length>=5);if(ws.length&&ws.every(w=>T.includes(w)))return k}
+ if(o.cr){if(/SALAIRE|DDFIP|DGFIP|PAIE|CAF\b|FRANCE TRAVAIL|POLE EMPLOI/.test(T)){const inc=all.filter(k=>k.startsWith("inc|")),sal=inc.filter(k=>/salaire/i.test(k));return sal.length===1?sal[0]:inc.length===1?inc[0]:""}return""}
+ for(const[re,nm]of BK_RULES)if(re.test(T)){const k=all.find(x=>x.startsWith("env|")&&nm.test(x));if(k)return k}
+ return""}
+let bk={files:[],ops:[],start:1,busy:"",err:"",only:false,undo:null};
+function bkMonth(o){const d=o.ed,day=+d.slice(8);let y=+d.slice(0,4),m=+d.slice(5,7)-1;const st=(S.bank&&+S.bank.start)||1;if(st>1&&day>=st){m++;if(m>11){m=0;y++}}return{y,m}}
+const bkSeenKey=o=>o.od+"|"+o.amt.toFixed(2)+(o.cr?"c":"d")+"|"+bkNorm(o.label).replace(/[^A-Z0-9]/g,"").slice(0,24)+"#"+o.occ;
+function bkPrep(list){const cnt={};list.forEach((o,i)=>{o.id=i;o.key=bkKey(o);const b=o.od+"|"+o.amt+o.cr+bkNorm(o.label);cnt[b]=(cnt[b]||0)+1;o.occ=cnt[b];o.sk=bkSeenKey(o);o.dup=(S.bank.seen||[]).includes(o.sk);o.t=bkSuggest(o);o.touched=false;const ym=bkMonth(o);o.off=ym.y!==S.year;o.on=!!o.t&&o.t!=="-"&&!o.dup&&!o.off})}
+async function bkLoad(files){files=[...files];if(!files.length)return;bk={files:[],ops:[],start:(S.bank&&+S.bank.start)||1,busy:"Lecture de "+files[0].name+"…",err:"",only:false,undo:null};go("bank");
+ try{let all=[];
+  for(const f of files){bk.busy="Lecture de "+f.name+"…";draw();const pg=await pdfPages(f),r=bkParse(pg);
+   if(!r.ops.length)throw new Error("Aucune opération reconnue dans « "+f.name+" ». Ce format de relevé n'est peut-être pas encore pris en charge (essayez l'export CSV de votre banque, ou un relevé « écritures de la période » classique).");
+   bk.files.push({name:f.name,per:r.per,anc:r.anc,nou:r.nou,diff:r.diff,n:r.ops.length,warn:r.warn});r.ops.forEach(o=>o.file=f.name);all=all.concat(r.ops)}
+  all.sort((a,b)=>a.od.localeCompare(b.od));bkPrep(all);bk.ops=all;bk.busy=""}
+ catch(e){bk.busy="";bk.err=e&&e.message||"Lecture impossible."}
+ draw();scrollTo(0,0)}
+function bkSel(){return bk.ops.filter(o=>o.on&&o.t&&o.t!=="-"&&!o.off)}
+function bkApply(){const sel=bkSel();if(!sel.length)return;const snap=JSON.stringify(pack());let nT=0,nF=0;
+ sel.forEach(o=>{const m=bkMonth(o).m,g=o.t.slice(0,o.t.indexOf("|")),n=o.t.slice(o.t.indexOf("|")+1);
+  if(g==="env"||g==="pot"){S.tx.push({m,d:o.ed,c:n,a:o.amt,n:o.label.replace(/^CB\s+/i,"").replace(/\s+\d{2}\/\d{2}(?:\/\d{2,4})?$/,"").slice(0,60)});nT++}
+  else{const k=g+"|"+n;M(m)[k]=Math.round((v(m,g,n)+o.amt)*100)/100;nF++}});
+ const mp=S.bank.map;bk.ops.forEach(o=>{if(o.t!=null&&o.t!==""&&(o.touched||o.on||o.t==="-"))mp[o.key]=o.t});
+ sel.concat(bk.ops.filter(o=>o.dup)).forEach(o=>{if(!S.bank.seen.includes(o.sk))S.bank.seen.push(o.sk)});if(S.bank.seen.length>5000)S.bank.seen=S.bank.seen.slice(-5000);
+ save();bk.undo=snap;const n=sel.length;bk.ops=[];bk.files=[];go(typeof lastM==="number"?lastM:new Date().getMonth());
+ let b=document.getElementById("undobar");if(!b){b=document.createElement("div");b.id="undobar";b.setAttribute("role","status");document.body.appendChild(b)}
+ b.innerHTML=`<span>${n} opération${n>1?"s":""} importée${n>1?"s":""}</span><button type="button">Annuler</button>`;b.className="on";clearTimeout(undoT);
+ const hide=()=>{b.className="";clearTimeout(undoT)};b.querySelector("button").onclick=()=>{try{S=normalize(JSON.parse(snap));S.updated=Date.now();store.setItem(KEY,JSON.stringify(pack()));scheduleSync()}catch(e){}hide();draw()};undoT=setTimeout(hide,12000)}
+function bankPage(){
+ if(bk.busy)return`<div class="card"><h2>📄 Lecture du relevé</h2><p class="note" style="margin:0">${esc(bk.busy)}</p></div>`;
+ if(!bk.ops.length)return`<div class="card"><h2>🏦 Relevé bancaire (PDF)</h2><p style="margin:0 0 10px">${esc(bk.err||"Choisissez un relevé de compte au format PDF.")}</p><div class="btns"><button data-act="bkpick">Choisir un PDF</button><button data-act="go" data-v="set">Retour</button></div></div>`;
+ const opt=bkOptions(),optHtml=(o)=>{const G=o.cr?opt.c:opt.d;return`<option value=""${o.t===""?" selected":""}>À classer…</option><option value="-"${o.t==="-"?" selected":""}>Ignorer</option>`+G.map(([lab,ls])=>ls.length?`<optgroup label="${lab}">${ls.map(([k,n])=>`<option value="${esc(k)}"${o.t===k?" selected":""}>${esc(n)}</option>`).join("")}</optgroup>`:"").join("")};
+ const sel=bkSel(),todo=bk.ops.filter(o=>!o.t&&!o.dup&&!o.off).length,dups=bk.ops.filter(o=>o.dup).length,off=bk.ops.filter(o=>o.off).length;
+ const dTot=sel.filter(o=>!o.cr).reduce((a,o)=>a+o.amt,0),cTot=sel.filter(o=>o.cr).reduce((a,o)=>a+o.amt,0);
+ const files=bk.files.map(f=>{const per=f.per?`du ${fdate(f.per[0])}/${f.per[0].slice(0,4)} au ${fdate(f.per[1])}/${f.per[1].slice(0,4)}`:"";
+  const chk=f.diff==null?`<span class="note">solde du relevé non repéré</span>`:Math.abs(f.diff)<0.015?`<span style="color:var(--inc)">✓ le total correspond au solde du relevé (${eur(f.anc)} → ${eur(f.nou)})</span>`:`<span style="color:var(--exp)">⚠ écart de ${eur(Math.abs(f.diff))} avec le solde du relevé : certaines lignes n'ont peut-être pas été lues, vérifiez</span>`;
+  return`<div class="row" style="align-items:flex-start"><span><b>${esc(f.name)}</b><br><small class="note">${per} · ${f.n} opération${f.n>1?"s":""}</small><br><small>${chk}</small>${f.warn.map(w=>`<br><small style="color:var(--exp)">${esc(w)}</small>`).join("")}</span></div>`}).join("");
+ const rows=bk.ops.filter(o=>!bk.only||(!o.t&&!o.dup&&!o.off)).map(o=>{const ym=bkMonth(o),dis=o.off||o.dup;
+  return`<div class="bkrow${!o.t&&!dis?" todo":""}${dis?" dis":""}"><input type="checkbox" data-bkon="${o.id}" ${o.on?"checked":""}${dis||!o.t||o.t==="-"?" disabled":""} aria-label="Importer"><div class="bkl"><b title="${esc(o.label)}">${esc(o.label)}</b><small>${fdate(o.ed)}${o.ed!==o.od?" (achat) ":" "}${(S.bank.start>1)?"· budget "+MOIS[ym.m].toLowerCase()+(ym.y!==S.year?" "+ym.y:"")+" ":""}${o.dup?"· déjà importé ":""}${o.off?"· hors "+S.year+" (changez d'année) ":""}</small></div>
+  <div class="bkr"><span class="bka ${o.cr?"c":"d"}">${o.cr?"+":"−"}${eur(o.amt)}</span><select data-bkt="${o.id}" aria-label="Catégorie"${dis?" disabled":""}>${optHtml(o)}</select></div></div>`}).join("");
+ return`<div class="card"><h2>🏦 Relevé bancaire</h2>${files}
+ <div class="hl" style="margin-top:10px">${bk.ops.length} opération${bk.ops.length>1?"s":""} lue${bk.ops.length>1?"s":""}${dups?` · ${dups} déjà importée${dups>1?"s":""}`:""}${off?` · ${off} hors ${S.year}`:""}${todo?` · <b>${todo} à classer</b>`:""}.<br>Vérifiez les catégories : elles sont retenues pour le prochain relevé.</div>
+ <label class="row" style="margin-top:8px"><span>Mon mois de budget commence le jour<br><small class="note">1 = mois civil. Ex. 27 : du 27 au 26 suivant compte pour le mois suivant.</small></span><input type="number" min="1" max="28" inputmode="numeric" data-bkstart value="${S.bank.start||1}" style="width:84px"></label>
+ <div class="btns" style="margin-top:8px"><button data-act="bkall" data-v="1">Tout cocher</button><button data-act="bkall" data-v="0">Tout décocher</button><button data-act="bkonly">${bk.only?"Voir tout":"Seulement à classer"}</button></div></div>
+ <div class="card">${rows||'<p class="note" style="margin:0">Rien à classer.</p>'}</div>
+ <div class="bkbar"><button type="button" class="bkgo" data-act="bkgo"${sel.length?"":" disabled"}>Importer ${sel.length} opération${sel.length>1?"s":""}${sel.length?` · −${eur(dTot)}${cTot?" / +"+eur(cTot):""}`:""}</button><button type="button" class="bkx" data-act="bkcancel">Annuler</button></div>`}
+function bankCard(){return`<div class="card"><h2>🏦 Relevé bancaire (PDF)</h2><p class="note" style="margin-top:0">Importez un relevé de compte en PDF : les opérations sont lues sur votre appareil (le fichier n'est envoyé nulle part), proposées par catégorie, et ajoutées au budget une fois vérifiées. L'appli retient vos choix pour les prochains relevés et ne réimporte pas deux fois la même opération.</p><div class="btns"><button data-act="bkpick">Choisir un relevé PDF</button></div></div>`}
 // ───────── Démarrage ─────────
 genRec();autoPay();
 document.addEventListener("visibilitychange",()=>{if(!document.hidden){const n=S.tx.length,sg=JSON.stringify(S.ap);genRec();autoPay();if((S.tx.length!==n||JSON.stringify(S.ap)!==sg)&&!isLocked())draw()}});
