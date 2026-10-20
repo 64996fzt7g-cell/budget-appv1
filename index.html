@@ -851,18 +851,13 @@ function saveGoal(id,f){const fd=new FormData(f),nd=!!fd.get("nd"),pr=!!fd.get("
 function exportJson(){setMeta({lastBackup:Date.now()});const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(pack())],{type:"application/json"}));a.download="budget-"+S.year+".json";a.click()}
 // Conversion d'un export de l'ancienne application personnelle (budget2026.json) vers ce format
 function fromPersonal(o){
- const G0={inc:["Reste du mois précédent","Salaire Léa","Salaire Eva","Bonus","Études","Remboursements"],
-  fix:["Appart 1","Appart 2","LOA Clio","Charges","Électricité","Orange","Prixtel","Canal +","Spotify","Disney","iCloud","Darty Max","Sport","Ass habitation","Ass CLIO","Ass Clio 6","Ass CACI Léa","Ass CACI Eva","Mutuelle Léa","Mutuelle Eva","Prév Léa","Prév Eva","Taxe foncière","Impôts","Frais bancaires","Predica","Juridique","Brossettes"],
-  env:["Courses","Transports","Loisirs","Vacances","Divers","Maison","Santé","Shopping"],
-  pot:["Noël","Animaux","Anniversaires","Casper","Argent de poche Eva","Argent de poche Léa"],
-  sav:["Coups durs","Vacances","Travaux","Livret jeune","PER Léa","PER Eva","Ass Vie Léa","Ass Vie Eva"]};
+ const G0={inc:[],fix:[],env:[],pot:[],sav:[]};
  const g={};for(const k in G0){const l=o.lay&&Array.isArray(o.lay[k])?o.lay[k]:G0[k].concat(((o.cats||{})[k]||[]).filter(x=>!G0[k].includes(x)));g[k]=l.filter(x=>typeof x==="string")}
- const has=(a,n)=>ALL.some(m=>o[m]&&typeof o[m]==="object"&&+o[m][a+"|"+n]);
- if(!g.fix.includes("Free")&&(has("fix","Free")||has("pre","Free")))g.fix.push("Free");
  const m={};ALL.forEach(k=>{const x=o[k];if(x&&typeof x==="object"&&!Array.isArray(x)){m[k]={};for(const q in x)if(q.includes("|"))m[k][q]=x[q]}});
- const ach=Array.isArray(o.ach)?o.ach:["PER Léa","PER Eva","Ass Vie Léa","Ass Vie Eva"];
- const GD={"Coups durs":{t:6000,y:2028,m:1},"Vacances":{t:1500,y:2027,m:5},"Achat maison":{t:35000,y:2035,m:5}};
- const goals=(Array.isArray(o.glist)?o.glist:Object.keys(GD)).map((n,i)=>{const x=Object.assign({},GD[n],(o.goals||{})[n]);return{id:"p"+i,name:n,t:+x.t||0,y:+x.y,m:+x.m,lines:(n==="Achat maison"?ach:[n]).filter(a=>g.sav.includes(a))}}).filter(x=>x.lines.length&&x.y);
+ // lignes présentes dans les montants mais absentes de la liste : on les ajoute
+ const grp={inc:"inc",fix:"fix",pre:"fix",bud:"env",pot:"pot",sav:"sav"};
+ ALL.forEach(k=>{for(const q in (m[k]||{})){const i=q.indexOf("|"),gg=grp[q.slice(0,i)],n=q.slice(i+1);if(gg&&n&&!g[gg].includes(n))g[gg].push(n)}});
+ const goals=(Array.isArray(o.glist)?o.glist:Object.keys(o.goals||{})).map((n,i)=>{const x=(o.goals||{})[n]||{};return{id:"p"+i,name:n,t:+x.t||0,y:+x.y,m:+x.m,lines:(Array.isArray(x.lines)?x.lines:[n]).filter(a=>g.sav.includes(a))}}).filter(x=>x.lines.length&&x.t>0&&x.y);
  const yr=+o.year||2026,arr=a=>(Array.isArray(a)?a:[]).filter(t=>t&&typeof t==="object");
  return Object.assign(DEF(),{title:o.title||("Budget "+yr),year:yr,carry:false,nobal:g.pot.filter(n=>n.startsWith("Argent de poche")),g,m,tx:arr(o.tx),ret:arr(o.ret),open:o.open&&typeof o.open==="object"?o.open:{},goals})}
 const isPersonal=o=>!o.g&&!o.m&&(o.tx||o.cats||o.lay||ALL.some(k=>o[k]&&typeof o[k]==="object"));
