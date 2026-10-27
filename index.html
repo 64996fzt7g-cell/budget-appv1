@@ -270,7 +270,7 @@ const MOIS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","
 const MC=["Janv.","Févr.","Mars","Avr.","Mai","Juin","Juil.","Août","Sept.","Oct.","Nov.","Déc."];
 const GN={inc:"Revenus",fix:"Factures",env:"Dépenses",pot:"Enveloppes",sav:"Épargne"};
 const YKEYS=["m","tx","ret","open","ap"];let YC={};
-const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],who:{},whoSet:{},wt:{},pay:{},payRule:null,rec:[],due:{},rem:{},ap:{},yrs:{},end:{},
+const DEF=()=>({title:"Mon budget",year:new Date().getFullYear(),carry:true,updated:0,nobal:[],sep:[],who:{},whoSet:{},wt:{},pay:{},payRule:null,inv:{},regR:{},tmi:null,rec:[],due:{},rem:{},ap:{},yrs:{},end:{},
  g:{inc:["Salaire","Autres revenus"],fix:["Loyer ou crédit","Électricité","Internet","Assurances"],env:["Courses","Transports","Loisirs","Santé","Divers"],pot:["Cadeaux"],sav:["Épargne de précaution","Projet"]},
  m:{},tx:[],ret:[],open:{},goals:[],bank:{map:{},seen:[],start:1}});
 function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o))return d;
@@ -283,7 +283,7 @@ function normalize(o){const d=DEF();if(!o||typeof o!=="object"||Array.isArray(o)
  Object.keys(o.due||{}).forEach(k=>{if(o.due[k]&&o.due[k].fy==null)o.due[k].fy=o.year});
  if(typeof o.g!=="object")o.g=d.g;for(const k in d.g)if(!Array.isArray(o.g[k]))o.g[k]=[];
  ["tx","ret","goals","nobal","sep","rec"].forEach(k=>{if(!Array.isArray(o[k]))o[k]=[]});
- ["who","whoSet","wt"].forEach(k=>{if(!o[k]||typeof o[k]!=="object"||Array.isArray(o[k]))o[k]={}});Object.keys(o.who).forEach(k=>{if(!Array.isArray(o.who[k]))o.who[k]=[]});
+ ["who","whoSet","wt","inv","regR"].forEach(k=>{if(!o[k]||typeof o[k]!=="object"||Array.isArray(o[k]))o[k]={}});Object.keys(o.who).forEach(k=>{if(!Array.isArray(o.who[k]))o.who[k]=[]});
  if(!o.pay||typeof o.pay!=="object"||Array.isArray(o.pay))o.pay={};if(o.payRule&&(typeof o.payRule!=="object"||!(o.payRule.day>1)))o.payRule=null;
  o.bank=Object.assign({map:{},seen:[],start:1},o.bank&&typeof o.bank==="object"&&!Array.isArray(o.bank)?o.bank:{});if(!Array.isArray(o.bank.seen))o.bank.seen=[];if(!o.bank.map||typeof o.bank.map!=="object")o.bank.map={};
  if(!o.payRule&&!Object.keys(o.pay).length&&+o.bank.start>1)o.payRule={day:+o.bank.start,wk:false,prev:true};return o}
@@ -368,14 +368,14 @@ function nav(){if(typeof cur==="number")lastM=cur;const n=document.getElementByI
  n.hidden=typeof cur!=="number";
  const yb=document.getElementById("yr");if(yb){yb.textContent=S.year+" ▾";yb.classList.toggle("on",cur==="home")}
  n.innerHTML=MC.map((m,i)=>`<button data-act="go" data-v="${i}" class="${cur===i?"on":""}">${m}</button>`).join("");
- document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":k==="an"?cur==="an"||cur==="bilan":k==="tips"?cur==="tips"||cur==="sim":k==="set"?cur==="set"||cur==="bank":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
+ document.getElementById("tabs").innerHTML=[["m","Mois",lastM],["an","Annuel","an"],["obj","Objectifs","obj"],["tips","Conseils","tips"],["set","Réglages","set"]].map(([k,l,v])=>`<button data-act="go" data-v="${v}" class="${(k==="m"?typeof cur==="number"||cur==="pot":k==="an"?cur==="an"||cur==="bilan":k==="tips"?cur==="tips"||cur==="sim":k==="set"?cur==="set"||cur==="bank":k==="obj"?cur==="obj"||cur==="inv":cur===k)?"on":""}" aria-label="${l}">${ICO[k]}<span>${l}</span></button>`).join("")}
 function nav2(){const n=document.getElementById("nav"),a=n&&n.querySelector(".on");if(a)n.scrollLeft=a.offsetLeft-(n.clientWidth-a.clientWidth)/2}
 let editTx=-1,editRet=-1;
 function go(x){editTx=-1;editRet=-1;cur=x;nav();nav2();draw();scrollTo(0,0)}
 function goSec(id){const e=document.getElementById("sec-"+id);if(!e)return;if(e.tagName==="DETAILS"&&!e.open)e.open=true;e.scrollIntoView({behavior:"smooth",block:"start"});e.classList.remove("flash");void e.offsetWidth;e.classList.add("flash")}
 function draw(){const y=scrollY,app=document.getElementById("app");try{tutoInit()}catch(e){}
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
- app.innerHTML=newsHtml()+(cur==="bank"?bankPage():cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
+ app.innerHTML=newsHtml()+(cur==="bank"?bankPage():cur==="inv"?invPage():cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
  document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
 // ───────── Cartes repliables du mois ─────────
@@ -442,6 +442,7 @@ function savCard(m){
  const rl=S.ret.map((t,i)=>[t,i]).filter(([t])=>t.m===m);
  const Lv=S.goals.length&&S.year*12+m>=nowYM()?planLive(m):null,pl=Lv?Lv.P.lines:{},gr=Lv?Lv.rest:{},prest=sumO(gr),nrl=Object.keys(gr).filter(n=>gr[n]>0.5).length;
  return`<div id="sec-sav" class="card sav"><h2>Épargne · ${eur(sum(m,"sav"))} versés</h2>
+ <button type="button" class="srch" data-act="go" data-v="inv">📈 Placements et rendement${(()=>{try{const k=invRem().length;return k?` · 🔔 ${k} rappel${k>1?"s":""}`:""}catch(e){return""}})()}</button>
  ${prest>0.5&&nrl>1?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${m}">🎯 Verser le prévu des objectifs · ${eur(prest)}</button>`:""}
  <div class="row fh"><span>Ligne</span><span>Versé · Solde</span></div>
  ${vis("sav",m).map(n=>{const p=pl[n],r=gr[n]||0,vv=v(m,"sav",n);return`<div class="row"><span>${esc(n)}${r>0.5?`<br><small class="note">🎯 reste ${eur(r)}${p?" sur "+eur(p)+" prévus":""}</small><br><button type="button" class="gp" data-act="gpay" data-m="${m}" data-n="${esc(n)}">Verser ${eur(r)}</button>`:p?`<br><small class="note">🎯 prévu ${eur(p)} ✓</small>`:""}</span><span class="two">${inp(m,"sav",n,vv)}<b style="width:96px;text-align:right">${eur(soldeSav(m,n))}</b></span></div>`}).join("")}${none("sav")}
@@ -700,7 +701,7 @@ const nowYM=()=>{const b=bNow();return b.y*12+b.m};
 function goalSol(g,m){return g.lines.reduce((a,n)=>a+(m<0?op("sav",n):soldeSav(Math.min(11,m),n)),0)}
 // past = échéance dépassée : l'objectif est alors traité « dès que possible »
 function goalG(m0,adj,shift){const base=S.year*12+m0-(shift||0);return S.goals.map((g,i)=>{const D=g.nd?Infinity:(g.y*12+g.m)-base,past=!g.nd&&D<1;
- return{name:g.name,rem:Math.max(0,g.t-goalSol(g,m0)-(adj?adj(g,i):0)),D:past?Infinity:D,pr:!!g.pr,nd:!!g.nd||past,past,lines:g.lines,g}})}
+ return{name:g.name,rem:Math.max(0,g.t-goalSol(g,m0)-(adj?adj(g,i):0)-(past||g.nd?0:goalInt(g,m0,D))),D:past?Infinity:D,pr:!!g.pr,nd:!!g.nd||past,past,lines:g.lines,g}})}
 // mois du plan : mois en cours pour l'année en cours, 12 (après décembre) pour une année passée
 function planNowM(){const b=bNow();return S.year===b.y?b.m:S.year<b.y?12:0}
 // répartit les montants al[i] (par objectif) sur les lignes d'épargne : si un objectif a plusieurs lignes, comme vos versements des 3 derniers mois (à parts égales sinon)
@@ -794,7 +795,7 @@ function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(
  ${rest>0.5?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${pm}">🎯 Verser le prévu du mois · ${eur(rest)}</button>`:`<p class="note" style="margin:0 0 6px;color:var(--inc)">✓ Versements du mois faits.</p>`}`
   :ft>0?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>À épargner en ${labL(1)}</small><b>${eur(ft)}</b></div><div class="kpi"><small>Nécessaire ensuite</small><b>${eur(needF)}</b><small class="note">par mois</small></div></div>`:"";
  return`<div class="card sav"><h2>📅 Plan d'épargne</h2>
- <p class="note" style="margin:0 0 8px">Le plan calcule le <b>minimum à verser chaque mois</b> pour tenir toutes vos échéances : d'abord les objectifs ⭐ prioritaires, puis l'échéance la plus proche, puis les objectifs « dès que possible »${asap?" (ces derniers reçoivent toute votre capacité)":""}. Il tient compte de vos versements et retraits réels. Votre capacité d'épargne sert à vérifier que c'est tenable ; ce que vous versez en plus fait avancer vos objectifs.</p>
+ <p class="note" style="margin:0 0 8px">Le plan calcule le <b>minimum à verser chaque mois</b> pour tenir toutes vos échéances : d'abord les objectifs ⭐ prioritaires, puis l'échéance la plus proche, puis les objectifs « dès que possible »${asap?" (ces derniers reçoivent toute votre capacité)":""}. Il tient compte de vos versements et retraits réels${!S.noInvPlan&&S.goals.some(g=>g.lines.some(n=>invRate(n)>0))?", et des intérêts attendus de vos placements":""}. Votre capacité d'épargne sert à vérifier que c'est tenable ; ce que vous versez en plus fait avancer vos objectifs.</p>
  <label class="row"><span>Capacité d'épargne / mois<br><small class="note">${capSet()?"saisie":"automatique"}${ci.n?` · moyenne ${ci.lab} : ${eur(ci.avg)}`:" · aucun versement récent"}</small></span><input type="number" inputmode="decimal" step="5" min="0" data-gcap value="${capSet()?S.goalCap:""}" placeholder="${Math.round(ci.avg)}" aria-label="Capacité d'épargne mensuelle"></label>
  <div class="hl">${verdict}</div>
  ${faster.length?`<p class="note" style="margin:6px 0 0">En versant toute votre capacité chaque mois (${eur(cap)}), vos objectifs seraient atteints plus tôt : ${faster.join(", ")}.</p>`:""}
@@ -889,6 +890,7 @@ function goalsPage(){
    if(pm<12){const t=phTxt(Rn,gi,Lv.base),nx=Rn.months[0]?Rn.months[0][gi]||0:0;
     if(t)hl+=`<br>${late?"Pour tenir l'échéance, il faudrait verser":"Prévu ensuite"} : ${t}.${nx<=0.5?" Les objectifs à échéance plus proche passent d'abord.":""}`}
   }
+  {const gi2=!done&&!g.nd&&!past&&Lv?goalInt(g,Math.min(pm,11),dl-Math.min(pm,11)):0;if(gi2>=1)hl+=`<br><small class="note">📈 Intérêts attendus d'ici l'échéance sur le solde actuel : ≈ ${eur(gi2)}, comptés dans le plan.</small>`}
   if(!done&&L>=0&&(vs>0||byProg))hl+=`<br><small class="note">${byProg?"Progression moyenne depuis janvier (intérêts et ajustements compris)":"Versé en moyenne depuis janvier"} : ${eur(avg)} par mois.</small>`;
   // projection selon le plan (réaliste : le nécessaire si la capacité suffit, sinon la capacité)
   const path=[];let E=dl!=null&&!past?dl:L+12;
@@ -906,8 +908,88 @@ function goalsPage(){
   <details data-id="goal-${g.id}"><summary>Modifier l'objectif</summary>${goalForm(g)}</details></div>`}).join("");
  return`<p class="note" style="margin-top:0">${S.goals.length?`Soldes calculés à fin ${MOIS[lastMonth()].toLowerCase()} ${S.year} (dernier mois saisi).`:"Fixez un montant à atteindre et une date (ou « dès que possible ») : l'application calcule ce qu'il manque et ce qu'il faut mettre chaque mois."}</p>
  <div class="card sav"><details data-id="goal-new"${S.goals.length?"":" open"}><summary style="color:var(--sav);font-weight:600">＋ Nouvel objectif</summary>${goalForm(null)}</details></div>
+ <button type="button" class="srch" data-act="go" data-v="inv" style="margin:0 0 10px">📈 Placements et rendement</button>
  ${planCard()}
  <div class="grid">${cards}</div>`}
+// ───────── Placements : fiche par ligne d'épargne, rendement prévu et constaté ─────────
+// Taux réglementés intégrés (à mettre à jour à chaque révision : 1er février et 1er août). Modifiables dans la page.
+const REG={la:{n:"Livret A",r:1.7,cap:22950},ldds:{n:"LDDS",r:1.7,cap:12000},lep:{n:"LEP",r:2.5,cap:10000}},REGD="2026-08-01",REGL="1er août 2026";
+const PS_AV=17.2,FLAT=31.4; // prélèvements sociaux assurance vie ; prélèvement forfaitaire unique 2026 (12,8 % + 18,6 %)
+const TYP=[["","— Choisir le type —"],["la","Livret A"],["ldds","LDDS"],["lep","LEP"],["lj","Livret jeune"],["liv","Livret bancaire, compte à terme (imposé)"],["pel","PEL (imposé)"],["av","Assurance vie"],["per","PER"],["autre","Autre placement"]];
+const TYPN=t=>(TYP.find(x=>x[0]===t)||["",""])[1];
+const LIVT=["la","ldds","lep","lj","liv","pel"];
+const regR=()=>{const o=S.regR||{};return{la:o.la!=null?o.la:REG.la.r,ldds:o.ldds!=null?o.ldds:REG.ldds.r,lep:o.lep!=null?o.lep:REG.lep.r}};
+const invS=n=>(S.inv||{})[n]||null;
+// rendement net annuel (%) : après prélèvements sociaux annuels (fonds euros d'assurance vie) ou impôt forfaitaire (livrets imposés)
+function invRate(n){const s=invS(n);if(!s||!s.t)return null;const R=regR();
+ if(s.t==="la"||s.t==="ldds"||s.t==="lep")return R[s.t];
+ if(s.t==="lj")return s.r!=null?s.r:R.la;
+ if(s.t==="liv"||s.t==="pel")return(s.r||0)*(1-FLAT/100);
+ if(s.t==="autre")return s.r||0;
+ const e=(s.e!=null?s.e:100)/100;return e*(s.re||0)*(s.t==="av"?1-PS_AV/100:1)+(1-e)*((s.ru||0)-(s.f||0))}
+const invCap=n=>{const s=invS(n);if(!s)return null;return s.t==="la"||s.t==="ldds"||s.t==="lep"?REG[s.t].cap:s.t==="lj"?1600:s.t==="pel"?61200:null};
+// versement mensuel prévu : saisi, sinon moyenne des 6 derniers mois saisis
+function invDep(n){const s=invS(n);if(s&&s.d!=null)return s.d;const b=bNow(),L=S.year===b.y?b.m:S.year<b.y?11:-1,ks=[];
+ for(let k=L;k>=0&&ks.length<6;k--)if(active(k))ks.push(Math.max(0,v(k,"sav",n)));return ks.length?ks.reduce((a,x)=>a+x,0)/ks.length:0}
+// intérêts de l'année : solde de début de chaque mois × taux / 12 (mois passés réels, mois à venir avec le versement prévu)
+function invYear(n){const r=invRate(n);if(r==null)return null;const L=lastMonth(),cap=invCap(n),d=invDep(n);let B=op("sav",n),t=0;
+ for(let k=0;k<12;k++){if(k>0)B=k-1<=L?soldeSav(k-1,n):(cap!=null&&B>=cap?B:Math.min(cap!=null?cap:Infinity,B+d));t+=Math.max(0,B)*r/1200}return t}
+// projection sur N ans à partir du solde actuel, intérêts capitalisés, versements arrêtés au plafond
+function invProj(n,years){const r=(invRate(n)||0)/1200,cap=invCap(n),d=invDep(n),B0=soldeSav(lastMonth(),n);let B=B0,dep=0,capAt=null;
+ for(let k=1;k<=years*12;k++){B*=1+r;if(cap==null||B<cap){const a=cap==null?d:Math.max(0,Math.min(d,cap-B));B+=a;dep+=a}if(cap!=null&&capAt==null&&B>=cap-0.5)capAt=k}
+ return{B,dep,int:B-B0-dep,capAt}}
+// rendement constaté : ajustements du mois (intérêts, plus-values, frais) rapportés au capital moyen, ramené à l'année
+function invReal(n,y){if(y!==S.year&&!hasData((S.yrs||{})[y]))return null;return withYear(y,()=>{const L=y===S.year?lastMonth():11;let g=0,c=0,cnt=0,nz=0;
+ for(let k=0;k<=L;k++){const B=k===0?op("sav",n):soldeSav(k-1,n),a=v(k,"adjsav",n);g+=a;if(Math.abs(a)>0.005)nz++;c+=Math.max(0,B)+Math.max(0,v(k,"sav",n))/2;cnt++}
+ if(!cnt||c<=1||!nz)return null;const avgC=c/cnt;return{g,avgC,pct:g/avgC*12/cnt*100,months:cnt}})}
+// intérêts attendus sur le solde actuel d'un objectif jusqu'à son échéance (comptés dans le plan d'épargne, sauf si désactivé)
+function goalInt(g,m0,D){if(S.noInvPlan||!isFinite(D)||D<=0)return 0;let t=0;
+ [...new Set(g.lines)].forEach(n=>{const r=invRate(n);if(!(r>0))return;const B=m0<0?op("sav",n):soldeSav(Math.min(11,m0),n);if(B>0)t+=B*(Math.pow(1+r/1200,D)-1)});return t}
+// rappels : révision des taux réglementés (1er février, 1er août), taux annuel du fonds euros (janvier à mars)
+function invRem(){const out=[],now=new Date(),y=now.getFullYear(),lines=S.g.sav.filter(n=>invS(n)&&invS(n).t);
+ if(lines.some(n=>["la","ldds","lep","lj"].includes(invS(n).t))){const last=[new Date(y,7,1),new Date(y,1,1),new Date(y-1,7,1)].find(d=>d<=now),seen=pDate(S.regU)||pDate(REGD);
+  if(last>seen)out.push(`🔔 Les taux des livrets réglementés ont pu changer le ${last.getDate()===1?"1er":last.getDate()} ${MOIS[last.getMonth()].toLowerCase()} ${last.getFullYear()}. Ceux de l'appli datent du ${REGL}. Vérifiez-les (service-public.fr) et corrigez-les ci-dessous. <button type="button" class="srch" data-act="regok">Les taux sont à jour</button>`)}
+ if(now.getMonth()<=2)lines.filter(n=>["av","per"].includes(invS(n).t)&&(invS(n).u||0)<y).forEach(n=>out.push(`🔔 Votre assureur annonce en début d'année le taux servi en ${y-1} sur le fonds euros de « ${esc(n)} » : mettez à jour sa fiche. <button type="button" class="srch" data-act="invok" data-n="${esc(n)}">C'est à jour</button>`));
+ return out}
+function invCard(n){const s=invS(n)||{},t=s.t||"",B=soldeSav(lastMonth(),n),r=invRate(n),cap=invCap(n),R=regR(),y=S.year;
+ const num=(k,lab,ph,step,sub)=>`<label class="row"><span>${lab}${sub?`<br><small class="note">${sub}</small>`:""}</span><input type="number" inputmode="decimal" step="${step||0.01}" data-invf="${esc(n)}|${k}" value="${s[k]!=null?s[k]:""}" placeholder="${ph}" style="width:96px"></label>`;
+ let f="";
+ if(t==="lj")f=num("r","Taux (%)",R.la,0.05,"fixé par la banque, au moins celui du Livret A");
+ else if(t==="liv"||t==="pel")f=num("r","Taux brut (%)","0",0.05,t==="pel"?"selon l'année d'ouverture · intérêts imposés à "+String(FLAT).replace(".",",")+" % (PEL ouverts depuis 2018)":"intérêts imposés à "+String(FLAT).replace(".",",")+" %");
+ else if(t==="autre")f=num("r","Rendement net estimé (%)","0",0.1);
+ else if(t==="av"||t==="per"){const e=s.e!=null?s.e:100;f=num("e","Part en fonds euros (%)","100",5)+num("re","Taux du fonds euros (%)","0",0.05,"taux servi annoncé par l'assureur, net de frais de gestion")+(e<100?num("ru","Rendement estimé des unités de compte (%)","0",0.5,"hypothèse, non garanti")+num("f","Frais de gestion des unités de compte (%)","0",0.05):"")}
+ if(t)f+=num("d","Versement mensuel prévu (€)",Math.round(invDep(n)),1,s.d!=null?"saisi":"automatique : moyenne de vos 6 derniers mois");
+ const sel=`<label class="row"><span>Type de placement</span><select data-invt="${esc(n)}" aria-label="Type de ${esc(n)}">${TYP.map(([k,l])=>`<option value="${k}"${k===t?" selected":""}>${l}</option>`).join("")}</select></label>`;
+ if(!t)return`<div class="card sav"><h2>${esc(n)} <small class="note">· ${eur(B)}</small></h2>${sel}<p class="note">Choisissez le type pour calculer son rendement.</p></div>`;
+ const iy=invYear(n),notes=[];
+ if(cap!=null){if(B>=cap-0.5)notes.push(`⚠️ Plafond atteint (${eur(cap)}) : vous ne pouvez plus y verser, les intérêts peuvent le dépasser.`);else if(B>=cap*0.9)notes.push(`⚠️ Plafond bientôt atteint : ${eur(B)} sur ${eur(cap)}.`)}
+ if(t==="per"){const dy=ALL.reduce((a,k)=>a+Math.max(0,v(k,"sav",n)),0);notes.push(S.tmi!=null&&!(dy>0)?`💶 Aucun versement en ${y} : chaque euro versé réduirait votre impôt d'environ ${S.tmi} centimes (tranche à ${S.tmi} %), dans la limite de votre plafond de déduction.`:S.tmi!=null?`💶 Économie d'impôt estimée sur vos versements ${y} : <b>${eur(dy*S.tmi/100)}</b> (${eur(dy)} versés × tranche à ${S.tmi} %), dans la limite de votre plafond de déduction (indiqué sur votre avis d'impôt). L'impôt et les prélèvements sociaux s'appliquent à la sortie.`:`💶 Indiquez votre tranche d'imposition en haut de la page pour estimer l'économie d'impôt de vos versements.`)}
+ if(t==="av")notes.push(`Rendement net après prélèvements sociaux de ${String(PS_AV).replace(".",",")} % sur le fonds euros${(s.e!=null?s.e:100)<100?" ; sur les unités de compte, ils s'appliquent au retrait":""}. Après 8 ans, les gains retirés bénéficient d'un abattement d'impôt.`);
+ if(LIVT.includes(t))notes.push(`Intérêts calculés par quinzaine et versés une fois par an, fin décembre : vérifiez le montant sur votre relevé de janvier et notez-le dans les ajustements de décembre.`);
+ // rendement constaté (placements valorisés en cours d'année)
+ if(!LIVT.includes(t)){[y,y-1].forEach(yy=>{const q=invReal(n,yy);if(!q)return;const d=q.pct-r;
+  notes.push(`📊 Constaté ${yy===y?"depuis janvier "+y:"en "+yy} : <b>${q.g>=0?"+":""}${eur(q.g)}</b>, soit ≈ <b>${q.pct.toFixed(2).replace(".",",")} %</b> par an${q.months<12?` (sur ${q.months} mois)`:""}. ${Math.abs(d)<0.3?"Conforme à la fiche.":d<0?`<span style="color:var(--exp)">Plus bas que prévu (${r.toFixed(2).replace(".",",")} %) : vérifiez les frais et le taux de la fiche${(s.e!=null?s.e:100)<100?", ou c'est la variation des unités de compte":""}.</span>`:`<span style="color:var(--inc)">Mieux que prévu (${r.toFixed(2).replace(".",",")} %).</span>`}`)})
+  if(![y,y-1].some(yy=>invReal(n,yy)))notes.push(`📊 Rendement constaté : notez chaque mois la variation du contrat dans les « Ajustements du mois » de l'épargne (intérêts, plus ou moins-values, frais) pour le comparer à la fiche.`)}
+ const P=[1,5,10,20].map(k=>[k,invProj(n,k)]);
+ const capTxt=cap!=null?(()=>{const q=invProj(n,40);return q.capAt!=null&&B<cap-0.5?`<p class="note" style="margin:4px 0 0">Plafond atteint vers ${ymLab(S.year*12+lastMonth()+q.capAt)} à ce rythme : les versements s'arrêtent alors dans le calcul.</p>`:""})():"";
+ return`<div class="card sav"><h2>${esc(n)} <small class="note">· ${TYPN(t)}</small></h2>${sel}${f}
+ <div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>Solde actuel</small><b>${eur(B)}</b></div><div class="kpi"><small>Rendement net</small><b>${r.toFixed(2).replace(".",",")} %</b><small class="note">par an</small></div><div class="kpi inc"><small>Intérêts attendus ${y}</small><b>${eur(iy)}</b></div></div>
+ ${notes.map(x=>`<p class="note" style="margin:6px 0 0">${x}</p>`).join("")}
+ <h2 style="margin-top:12px;font-size:15px">Projection <small class="note">· ${eur(invDep(n))} par mois</small></h2>
+ ${P.map(([k,q])=>`<div class="row"><span>Dans ${k} an${k>1?"s":""}</span><span style="text-align:right"><b>${eur(q.B)}</b><br><small class="note">dont ${eur(q.int)} d'intérêts</small></span></div>`).join("")}${capTxt}</div>`}
+function invPage(){const L=S.g.sav.filter(n=>live(n,lastMonth())),done=L.filter(n=>invS(n)&&invS(n).t),R=regR(),rem=invRem();
+ const tb=done.reduce((a,n)=>a+Math.max(0,soldeSav(lastMonth(),n)),0),ti=done.reduce((a,n)=>a+(invYear(n)||0),0),avg=tb>0?done.reduce((a,n)=>a+Math.max(0,soldeSav(lastMonth(),n))*(invRate(n)||0),0)/tb:0;
+ const rr=(k,lab)=>`<label class="row"><span>${lab}<br><small class="note">plafond ${eur(REG[k].cap)}</small></span><input type="number" inputmode="decimal" step="0.05" data-regr="${k}" value="${(S.regR||{})[k]!=null?S.regR[k]:""}" placeholder="${REG[k].r}" style="width:84px" aria-label="Taux ${lab}"></label>`;
+ return`<button type="button" class="cp" data-act="go" data-v="${lastM}" style="margin:0 0 10px">‹ Retour au mois</button>
+ <h2 style="margin:0 0 4px">📈 Placements</h2>
+ <p class="note" style="margin:0 0 10px">Une fiche par ligne d'épargne : l'appli calcule les intérêts de l'année, projette la suite et compare avec ce que chaque contrat rapporte vraiment. Ce sont des estimations pour suivre votre épargne, pas un conseil en placement.</p>
+ ${rem.map(x=>`<div class="hl" style="margin:0 0 10px">${x}</div>`).join("")}
+ ${done.length?`<div class="kpis" style="margin-bottom:12px"><div class="kpi sav"><small>Placé</small><b>${eur(tb)}</b></div><div class="kpi inc"><small>Intérêts attendus ${S.year}</small><b>${eur(ti)}</b></div><div class="kpi"><small>Rendement moyen</small><b>${avg.toFixed(2).replace(".",",")} %</b></div></div>`:""}
+ <div class="card"><h2>Réglages</h2>
+ <label class="row"><span>Tranche d'imposition<br><small class="note">pour l'économie d'impôt du PER</small></span><select data-tmi aria-label="Tranche d'imposition"><option value="">—</option>${[0,11,30,41,45].map(x=>`<option value="${x}"${S.tmi===x?" selected":""}>${x} %</option>`).join("")}</select></label>
+ <label class="chk" style="padding:6px 0"><input type="checkbox" data-set="invplan"${S.noInvPlan?"":" checked"}><span>Compter les intérêts attendus dans le plan d'épargne<br><small class="note">intérêts sur le solde actuel des lignes d'un objectif jusqu'à son échéance : il reste moins à verser</small></span></label>
+ <details data-id="regr"><summary>Taux des livrets réglementés</summary><p class="note">Taux intégrés à l'appli : ceux du ${REGL}. Ils peuvent changer au 1er février et au 1er août : corrigez-les ici si besoin (vide = taux de l'appli).</p>${rr("la","Livret A")}${rr("ldds","LDDS")}${rr("lep","LEP")}</details></div>
+ ${L.map(invCard).join("")||`<div class="card"><p class="note" style="margin:0">Ajoutez d'abord des lignes d'épargne (Réglages).</p></div>`}`}
 // ───────── Réglage : jours de paye ─────────
 function paySet(){const y=S.year,r=S.payRule||{},prev=r.prev!=null?!!r.prev:r.day>=15;
  const rows=ALL.concat([12]).map(k=>{const yy=k===12?y+1:y,mm=k===12?0:k,s=payStart(yy,mm),ex=!!(((S.pay||{})[yy]||[])[mm]),lim=pLim(yy,mm);
@@ -967,7 +1049,7 @@ function remap(fn){ // applique fn(ancienNom)->nouveauNom|null sur toutes les do
  Object.keys(S.yrs).forEach(y=>{if(+y!==y0){loadYear(+y);yearPart();stash()}});
  loadYear(y0);yearPart();stash();
  S.goals.forEach(g=>{g.lines=g.lines.map(fn).filter(x=>x!==null)});S.nobal=(S.nobal||[]).map(fn).filter(x=>x!==null);S.sep=(S.sep||[]).map(fn).filter(x=>x!==null);
- ["who","whoSet","wt"].forEach(k=>{const o2={};Object.keys(S[k]||{}).forEach(e=>{const r=fn(e);if(r!==null)o2[r]=S[k][e]});S[k]=o2});
+ ["who","whoSet","wt","inv"].forEach(k=>{const o2={};Object.keys(S[k]||{}).forEach(e=>{const r=fn(e);if(r!==null)o2[r]=S[k][e]});S[k]=o2});
  {const e2={};Object.keys(S.end||{}).forEach(k=>{const r=fn(k);if(r!==null)e2[r]=S.end[k]});S.end=e2}
  {const d2={};Object.keys(S.due||{}).forEach(k=>{const r=fn(k);if(r!==null)d2[r]=S.due[k]});S.due=d2}
  {const r2={};Object.keys(S.rem||{}).forEach(k=>{const r=fn(k);if(r!==null)r2[r]=S.rem[k]});S.rem=r2}
@@ -1030,6 +1112,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="gpay")goalPay(+d.m,d.n);
  else if(a==="gpayall")goalPay(+d.m);
  else if(a==="payclr")clrPay(d.v);
+ else if(a==="regok"){S.regU=fmtD(new Date());save();draw()}
+ else if(a==="invok"){const o=(S.inv||{})[d.n];if(o){o.u=new Date().getFullYear();save();draw()}}
  else if(a==="delwho"){const L=(S.who||{})[d.e]||[],p=L.find(x=>x.id===d.id);if(p&&confirm("Retirer « "+p.n+" » de la liste ? Ses dépenses restent dans l'enveloppe, sans personne."))wDel(d.e,d.id)}
  else if(a==="newsok"){setMeta({seenVer:APP_VER});draw()}
  else if(a==="newsall")newsSheet();
@@ -1091,6 +1175,11 @@ document.addEventListener("change",e=>{const t=e.target,d=t.dataset||{};
   else if(o){o.t=t.value;o.touched=true;o.on=!!o.t&&o.t!=="-";
    bk.ops.forEach(x=>{if(x!==o&&x.key===o.key&&!x.touched&&!x.dup&&!x.off){x.t=o.t;x.on=!!x.t&&x.t!=="-"}});draw()}}
  else if(d.pay!==undefined)setPay(d.pay,t.value);
+ else if(d.invt!==undefined){S.inv=S.inv||{};if(!t.value)delete S.inv[d.invt];else S.inv[d.invt]=Object.assign({},S.inv[d.invt]||{},{t:t.value,u:new Date().getFullYear()});save();draw()}
+ else if(d.invf!==undefined){const i=d.invf.lastIndexOf("|"),n=d.invf.slice(0,i),k=d.invf.slice(i+1),o=(S.inv||{})[n];if(o){if(t.value==="")delete o[k];else{let x=+t.value||0;if(k==="e")x=Math.min(100,Math.max(0,x));if(k==="d")x=Math.max(0,x);o[k]=x}o.u=new Date().getFullYear();save();draw()}}
+ else if(d.regr!==undefined){S.regR=S.regR||{};if(t.value==="")delete S.regR[d.regr];else S.regR[d.regr]=Math.max(0,+t.value||0);S.regU=fmtD(new Date());save();draw()}
+ else if(d.tmi!==undefined){S.tmi=t.value===""?null:+t.value;save();draw()}
+ else if(d.set==="invplan"){S.noInvPlan=!t.checked;save();draw()}
  else if(d.payday!==undefined){const x=Math.round(+t.value);S.payRule=x>=2&&x<=31?{day:x,wk:!!(S.payRule&&S.payRule.wk)}:null;payChanged()}
  else if(d.paywk!==undefined){if(S.payRule){S.payRule.wk=t.checked;payChanged()}}
  else if(d.bkstart!==undefined){S.bank.start=Math.min(28,Math.max(1,Math.round(+t.value)||1));save();draw()}
@@ -1510,7 +1599,7 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=44;
+const APP_VER=45;
 const TUTO=[
 {i:"👋",t:"Bienvenue",b:"Cette appli suit votre budget mois par mois : ce qui rentre, ce qui sort, ce que vous mettez de côté.",l:["Tout reste sur votre appareil, rien n'est envoyé ailleurs.","Ce tour dure une minute. Vous pouvez le quitter à tout moment."]},
 {i:"📅",t:"Le mois",b:"L'onglet Mois est votre tableau de bord. Changez de mois avec la barre du haut.",l:["Chaque carte (Revenus, Factures, Dépenses, Enveloppes, Épargne) se déplie d'un toucher pour saisir ses montants.","« Détail du mois » résume tout d'un coup d'œil.","Payé en fin de mois ? Réglages › Jours de paye : le mois commence le jour de votre paye."]},
@@ -1523,6 +1612,7 @@ const TUTO=[
 {i:"💾",t:"Pensez à sauvegarder",b:"Vos données sont sur cet appareil uniquement.",l:["Réglages › Application › « Enregistrer dans Fichiers » en garde une copie sur iCloud.","Refaites-la de temps en temps : téléphone changé ou appli supprimée, vous retrouvez tout."]},
 {i:"🎉",t:"C'est parti !",b:"Commencez par adapter les lignes de votre budget à votre situation.",l:["Vous pouvez revoir ce tutoriel à tout moment dans Réglages › Application › Aide."]}];
 const CHANGES=[
+{v:45,t:"Placements et rendement",l:["Dans l'épargne du mois (ou la page Objectifs), « 📈 Placements et rendement » : choisissez le type de chaque ligne (Livret A, LDDS, LEP, Livret jeune, assurance vie, PER…).","L'appli calcule les intérêts attendus de l'année et projette la suite à 1, 5, 10 et 20 ans, en tenant compte des plafonds.","Pour l'assurance vie et le PER, elle compare le rendement prévu à ce que le contrat rapporte vraiment (vos ajustements du mois), et estime l'économie d'impôt du PER.","Les intérêts attendus sont comptés dans le plan d'épargne, et des rappels vous préviennent quand les taux changent."]},
 {v:44,t:"Le mois commence le jour de la paye",l:["Réglages › Mon budget › « Jours de paye » : indiquez votre jour de paye habituel, puis ajustez la date de chaque mois de l'année.","Paye le 28 octobre → « Novembre » va du 28 octobre à la veille de la paye suivante. L'appli ouvre directement le bon mois.","Les dates des dépenses, les factures prélevées, les rappels, la vue « Ce mois-ci », les objectifs et l'import des relevés suivent ces dates."]},
 {v:43,t:"Objectifs : des chiffres cohérents partout",l:["Un seul calcul pour tout l'écran : le plan, les cartes de chaque objectif et le « prévu » de chaque ligne d'épargne donnent les mêmes montants et le même verdict.","Le « nécessaire » du mois est le vrai minimum pour tenir vos échéances. Si c'est plus que votre capacité, l'appli le dit clairement.","La capacité automatique est la moyenne de vos 6 derniers mois (le mois en cours compte s'il la fait monter).","« Les mois suivants » montre ce qu'il faut verser : quand vous versez plus, ces montants baissent.","La carte « Objectifs ce mois-ci » donne un seul message, sans contradiction."]},
 {v:41,t:"Cadeaux : budget par personne",l:["Dans les enveloppes Noël et Anniversaires, ajoutez les personnes à qui offrir un cadeau : l'appli calcule le budget moyen de chacune.","Quand vous saisissez une dépense, choisissez « Pour qui ? » : vous voyez ce qui est dépensé et ce qu'il reste pour chaque personne.","Pour les anniversaires, indiquez la date : l'appli annonce les prochains.","Réglages › Mon budget › Enveloppes › « Suivi par personne » : activez la même chose sur d'autres enveloppes."]},
