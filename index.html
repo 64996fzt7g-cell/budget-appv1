@@ -251,8 +251,8 @@ details.ii{margin:2px 0 8px;font-size:13px;color:var(--mut)}details.ii>summary{l
 .news .nb{display:flex;gap:8px;flex-wrap:wrap}
 .news button,.nvbox button{font:inherit;font-size:14px;border-radius:12px;padding:9px 14px;border:0;cursor:pointer;background:var(--field);color:var(--ink)}
 .news button.p,.nvbox button.p{background:var(--brand);color:var(--herotxt);font-weight:600}
-#nvsheet{position:fixed;inset:0;z-index:85;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,10,25,.55)}
-#nvsheet .nvbox{width:100%;max-width:560px;max-height:85dvh;overflow:auto;background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
+#nvsheet,#bksheet{position:fixed;inset:0;z-index:85;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,10,25,.55)}
+#nvsheet .nvbox,#bksheet .nvbox{width:100%;max-width:560px;max-height:85dvh;overflow:auto;background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
 #nvsheet h2{margin:0 0 4px}#nvsheet h3{margin:14px 0 4px;font-size:15px}#nvsheet ul{margin:0;padding-left:20px;font-size:14px;line-height:1.45}
 </style>
 </head>
@@ -385,7 +385,7 @@ function draw(){const y=scrollY,app=document.getElementById("app");try{tutoInit(
  const op=[...app.querySelectorAll("details[open][data-id]")].map(x=>x.dataset.id);
  app.innerHTML=newsHtml()+(cur==="bank"?bankPage():cur==="inv"?invPage():cur==="tx"?txPage():cur==="home"?home():cur==="an"?year():cur==="obj"?goalsPage():cur==="tips"?tipsPage():cur==="sim"?simPage():cur==="bilan"?bilanPage():cur==="pot"?potPage():cur==="set"?settings():month(cur));
  op.forEach(id=>{const e=app.querySelector('details[data-id="'+CSS.escape(id)+'"]');if(e)e.open=true});
- document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{fabUpdate()}catch(e){}}
+ document.getElementById("ttl").textContent=S.title;document.title=S.title;scrollTo(0,y);if(cur==="set"&&GOOGLE_CLIENT_ID)loadGIS().catch(()=>{});renderSync();try{budgetAlert()}catch(e){}try{remToast()}catch(e){}try{bkSheet()}catch(e){}try{fabUpdate()}catch(e){}}
 // ───────── Cartes repliables du mois ─────────
 function fold(html,id,cls,ico,title,fig,sub,bar,force){const o=getMeta().secOpen||{},open=force||o[id];
  html=html.trim().replace(/^<div[^>]*>\s*<h2[^>]*>[\s\S]*?<\/h2>/,"").replace(/<\/div>$/,"");
@@ -1135,7 +1135,7 @@ function settings(){
  ${fOn("rec")?recCard():""}`;
  const gd=GOOGLE_CLIENT_ID?`<div class="card"><h2>Google Drive</h2><div id="syncbox">${syncBox()}</div></div>`:"";
  return seg+`${helpCard()}${lockCard()}
- <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ».${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
+ <div class="card"><h2>Sauvegarde</h2><p class="note" style="margin-top:0">Vos données restent sur cet appareil. Pour en garder une copie, touchez « Enregistrer dans Fichiers » puis choisissez iCloud Drive ou un autre dossier. Refaites-la de temps en temps. Pour retrouver vos données sur un autre appareil, touchez « Restaurer un fichier ». Un rappel s'affiche le 1er et le 15 de chaque mois.${getMeta().lastBackup?"<br>Dernière copie : "+fmtDT(getMeta().lastBackup)+".":""}</p>
  <div class="btns"><button data-act="files">Enregistrer dans Fichiers</button><button data-act="imp">Restaurer un fichier</button><button data-act="exp">Exporter (JSON)</button></div><input id="imp" type="file" accept=".json,application/json" hidden></div>
  ${fOn("pdf")?bankCard():""}
  <div class="card"><h2>Tableur (CSV)</h2><p class="note" style="margin-top:0">Exportez vos budgets et vos dépenses pour Excel ou Numbers, ou importez un tableau (par exemple une ancienne année). Enregistrez votre tableur au format CSV avant de l'importer.</p><div class="btns"><button data-act="csvb">Exporter le budget</button><button data-act="csvt">Exporter les dépenses</button><button data-act="csvi">Importer un CSV</button></div><input id="impcsv" type="file" accept=".csv,text/csv,text/plain" hidden>
@@ -1278,6 +1278,8 @@ document.addEventListener("click",e=>{const b=e.target.closest("[data-act]");if(
  else if(a==="bioon")enableBio().then(()=>draw()).catch(()=>alert("Face ID / Touch ID n'a pas pu être activé (indisponible sur cet appareil ou annulé)."));
  else if(a==="biooff"){const L=getLock();L.bio=null;setLock(L);draw()}
  else if(a==="files")saveToFiles();
+ else if(a==="bkfiles"){const o=document.getElementById("bksheet");if(o)o.remove();saveToFiles()}
+ else if(a==="bklater"){const o=document.getElementById("bksheet");if(o)o.remove()}
  else if(a==="gconnect")gToken().then(()=>{setMeta({gd:true,base:0});syncNow(true)}).catch(gFail);
  else if(a==="gsync"){if(tokenValid())syncNow(true);else connectThenSync()}
  else if(a==="gdisc"){if(confirm("Se déconnecter de Google Drive ? La copie déjà présente dans votre Drive n'est pas supprimée."))gDisconnect()}
@@ -1423,9 +1425,19 @@ async function saveToFiles(){const name="budget-"+S.year+"-"+fmtD(new Date())+".
   if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});setMeta({lastBackup:Date.now()});draw();return}}
  catch(e){if(e&&e.name==="AbortError")return}
  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setMeta({lastBackup:Date.now()});draw()}
-function remind(){const m=getMeta();if(m.gd||(!S.tx.length&&!Object.keys(S.m).length))return"";
- const day=864e5,t=Date.now(),stale=m.lastBackup?t-m.lastBackup>30*day:(m.since&&t-m.since>14*day);
- return stale?`<div class="hl" style="margin:0 0 12px">💾 Pensez à sauvegarder vos données : <b><a href="#" data-act="setapp" style="color:inherit">Réglages › Enregistrer dans Fichiers</a></b>. <button type="button" class="srch" style="margin:6px 0 0" data-act="files">Enregistrer maintenant</button></div>`:""}
+// ───────── Rappel de sauvegarde : le 1er et le 15 de chaque mois ─────────
+// Le rappel reste affiché tant qu'aucune copie n'a été faite depuis le dernier 1er ou 15 ; la fenêtre ne s'ouvre qu'une fois par jour.
+function bkDue(){const n=new Date();return new Date(n.getFullYear(),n.getMonth(),n.getDate()>=15?15:1)}
+function bkNeed(){const m=getMeta(),d=bkDue().getTime();if(m.gd||emptyApp()||(m.since&&m.since>=d))return false;return !(m.lastBackup>=d)} // premier rappel au 1er ou 15 qui suit le début
+const bkLab=()=>{const d=bkDue();return(d.getDate()===1?"1er":"15")+" "+MOIS[d.getMonth()].toLowerCase()};
+const bkLast=()=>{const m=getMeta();return m.lastBackup?"Dernière copie : "+fmtDT(m.lastBackup)+".":"Aucune copie pour l'instant."};
+function remind(){if(!bkNeed())return"";const today=new Date().getDate()===bkDue().getDate();
+ return`<div class="hl" style="margin:0 0 12px">💾 <b>${today?"C'est le jour de la sauvegarde":"Sauvegarde à faire depuis le "+bkLab()}</b> (le 1er et le 15 de chaque mois). ${bkLast()}<br><button type="button" class="srch" style="margin:6px 0 0" data-act="files">Enregistrer maintenant</button></div>`}
+function bkSheet(){if(isLocked()||typeof cur!=="number"||document.getElementById("tuto")||document.getElementById("bksheet")||document.getElementById("nvsheet")||!bkNeed())return;
+ const k=fmtD(new Date());if(getMeta().bkAsk===k)return;setMeta({bkAsk:k});
+ const o=document.createElement("div");o.id="bksheet";o.setAttribute("role","dialog");o.setAttribute("aria-modal","true");o.setAttribute("aria-label","Sauvegarde");
+ o.innerHTML=`<div class="nvbox"><h2>💾 Sauvegarde du ${bkLab()}</h2><p style="margin:6px 0;line-height:1.5">Vos données ne sont que sur ce téléphone. Enregistrez une copie dans Fichiers (iCloud Drive, par exemple) : en cas de perte ou de changement de téléphone, vous retrouvez tout avec « Restaurer un fichier ».</p><p class="note" style="margin:0 0 12px">${bkLast()}</p><div class="nb" style="display:flex;gap:8px"><button type="button" class="p" data-act="bkfiles">Enregistrer maintenant</button><button type="button" data-act="bklater">Plus tard</button></div></div>`;
+ o.addEventListener("click",e=>{if(e.target===o)o.remove()});document.body.appendChild(o)}
 // ───────── Page d'accueil : les années ─────────
 function home(){const ny=bNow().y;
  const ys=[...new Set([2025,2026,2027,2028,ny,S.year,...Object.keys(S.yrs||{}).map(Number)])].filter(y=>y>=2000&&y<=2100).sort((a,b)=>a-b);
@@ -1722,12 +1734,13 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=49;
+const APP_VER=50;
 const TUTO=[
 {i:"📅",t:"Votre mois",b:"Tout se passe dans l'onglet Mois : ce qui rentre, ce qui sort, ce qu'il reste.",l:["Touchez une carte (Revenus, Factures, Dépenses, Épargne) pour la remplir.","Changez de mois avec la barre du haut."]},
 {i:"➕",t:"Noter une dépense",b:"Le bouton + en bas à droite : un montant, une catégorie, c'est noté.",l:["Les factures avec un jour de prélèvement se comptent toutes seules à cette date.","Touchez ⓘ pour en savoir plus sur une carte."]},
 {i:"🧩",t:"À votre rythme",b:"Activez d'autres fonctions quand vous en avez besoin.",l:["Réglages › Fonctions : objectifs, enveloppes, import de relevé PDF, placements…","Vos données restent sur votre téléphone : pensez à les enregistrer (Réglages › Application)."]}];
 const CHANGES=[
+{v:50,t:"Rappel de sauvegarde le 1er et le 15",l:["Le 1er et le 15 de chaque mois, l'appli propose d'enregistrer une copie de vos données dans Fichiers.","Le rappel reste en haut du mois tant que la copie n'est pas faite."]},
 {v:49,t:"Objectifs : chaque objectif a son prévu",l:["Ce que vous versez en plus sur un objectif le fait avancer, lui seul : il ne réduit plus ce qu'il faut verser sur les autres ce mois-ci.","Exemple : 25 € sur Vacances alors que rien n'était prévu → Coups durs garde son montant à verser, et Vacances aura 25 € de moins à recevoir plus tard."]},
 {v:48,t:"Plus simple pour tout le monde",l:["Réglages › Fonctions : activez seulement ce qui vous sert (objectifs, enveloppes, import PDF, placements…). « Mode simple » masque le reste, vos données sont gardées.","À la première ouverture, une mise en route en quelques questions prépare le budget (revenus, factures, dépenses, épargne, paye).","Tutoriel plus court, et des explications repliées derrière ⓘ."]},
 {v:47,t:"Réserver une somme sur l'épargne",l:["Dans l'épargne du mois, « 🔒 Réserver une somme » : par exemple 600 € sur Coups durs pour un achat prévu, avec le mois si vous le connaissez.","L'argent reste sur la ligne, mais vos objectifs ne comptent que le disponible : le plan prévoit de remplacer la somme.","Le jour de l'achat, « Retirer » note le retrait et supprime la réservation."]},
