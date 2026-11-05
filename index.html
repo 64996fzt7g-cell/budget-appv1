@@ -15,8 +15,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>try{if(localStorage.getItem("budget_app_v1_lock"))document.documentElement.classList.add("locked")}catch(e){}</script>
 <style>
-:root{--bg:#f4f4f9;--card:#fff;--ink:#17171f;--mut:#6a6a7c;--line:#e6e6ef;--field:#eeeef6;--inc:#0fae84;--exp:#ff5a4d;--sav:#6a4cf0;--env:#f2a30f;--brand:#4a3fd8;--hero:#221d5c;--herotxt:#f4f3ff;--neg:#ff9b8e;--hx-exp:#ff7b6e;--hx-sav:#a597ff;--hx-env:#ffc94d;--hx-rest:#45e3b5;--num:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI Variable Display",system-ui,sans-serif}
-@media(prefers-color-scheme:dark){:root{--bg:#0e0e15;--card:#181824;--ink:#efeff7;--mut:#9393a8;--line:#27273a;--field:#202030;--inc:#2fd4a6;--exp:#ff7566;--sav:#9486ff;--env:#ffb938;--brand:#b4acff;--hero:#e9e7ff;--herotxt:#1b1750;--neg:#d4382a;--hx-exp:#ff5a4d;--hx-sav:#5a43e6;--hx-env:#f0a000;--hx-rest:#0fae84}}
+:root{--c1:#2a78d6;--c2:#eb6834;--c3:#1baf7a;--c4:#eda100;--c5:#e87ba4;--c6:#008300;--c7:#6250d6;--cother:#a3a3b3;--bg:#f4f4f9;--card:#fff;--ink:#17171f;--mut:#6a6a7c;--line:#e6e6ef;--field:#eeeef6;--inc:#0fae84;--exp:#ff5a4d;--sav:#6a4cf0;--env:#f2a30f;--brand:#4a3fd8;--hero:#221d5c;--herotxt:#f4f3ff;--neg:#ff9b8e;--hx-exp:#ff7b6e;--hx-sav:#a597ff;--hx-env:#ffc94d;--hx-rest:#45e3b5;--num:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI Variable Display",system-ui,sans-serif}
+@media(prefers-color-scheme:dark){:root{--c1:#3987e5;--c2:#d95926;--c3:#199e70;--c4:#c98500;--c5:#d55181;--c6:#008300;--c7:#9085e9;--cother:#5e5e72;--bg:#0e0e15;--card:#181824;--ink:#efeff7;--mut:#9393a8;--line:#27273a;--field:#202030;--inc:#2fd4a6;--exp:#ff7566;--sav:#9486ff;--env:#ffb938;--brand:#b4acff;--hero:#e9e7ff;--herotxt:#1b1750;--neg:#d4382a;--hx-exp:#ff5a4d;--hx-sav:#5a43e6;--hx-env:#f0a000;--hx-rest:#0fae84}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
 header{padding:20px 16px 8px;max-width:1000px;margin:auto}
@@ -254,6 +254,12 @@ details.ii{margin:2px 0 8px;font-size:13px;color:var(--mut)}details.ii>summary{l
 #nvsheet,#bksheet{position:fixed;inset:0;z-index:85;display:flex;align-items:flex-end;justify-content:center;background:rgba(10,10,25,.55)}
 #nvsheet .nvbox,#bksheet .nvbox{width:100%;max-width:560px;max-height:85dvh;overflow:auto;background:var(--card);color:var(--ink);border-radius:22px 22px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom))}
 #nvsheet h2{margin:0 0 4px}#nvsheet h3{margin:14px 0 4px;font-size:15px}#nvsheet ul{margin:0;padding-left:20px;font-size:14px;line-height:1.45}
+.donut{display:flex;gap:14px;align-items:center;flex-wrap:wrap}.donut svg{flex:0 0 auto}
+.vleg{list-style:none;margin:0;padding:0;flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px}
+.vleg li{display:grid;grid-template-columns:12px 1fr auto;column-gap:8px;align-items:center;font-size:13px;cursor:pointer}.vleg li i{width:12px;height:12px;border-radius:3px}.vleg li small{grid-column:2/4;color:var(--mut);font-size:12px}
+.vkey{display:flex;gap:14px;font-size:12px;color:var(--mut);margin-top:4px}.vkey i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+#vtip{position:fixed;z-index:95;display:none;background:var(--ink);color:var(--card);border-radius:10px;padding:7px 10px;font-size:12px;pointer-events:none;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:220px}#vtip b{display:block;font-size:13px}#vtip span{display:block}
+svg [data-tip]{cursor:pointer}
 </style>
 </head>
 <body>
@@ -463,19 +469,75 @@ function posteCard(ms,title){
  const rows=[...S.g.fix.map(n=>["fix",n]),...S.g.env.map(n=>["env",n])].map(([g,n])=>[n,ms.reduce((a,m)=>a+(g==="env"?spent(m,n):v(m,g,n)),0)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1]);
  const t=rows.reduce((a,x)=>a+x[1],0);
  return`<div class="card exp"><h2>${title}</h2>${t?rows.slice(0,10).map(([n,a])=>`<div class="cat"><div><span>${esc(n)}</span><span>${eur(a)} · ${pct(a/t)}</span></div><div class="bar"><i style="width:${a/rows[0][1]*100}%;background:var(--exp)"></i></div></div>`).join("")+`<div class="hl">Poste le plus important : <b>${esc(rows[0][0])}</b> (${eur(rows[0][1])}, ${pct(rows[0][1]/t)})</div>`:`<p class="note">Aucune dépense pour le moment.</p>`}</div>`}
+// ───────── Graphiques (onglet Annuel) ─────────
+// Couleurs de catégories dans un ordre fixe (palette vérifiée : daltonisme, mode clair et sombre) ; « Autres » en gris.
+const VC=["var(--c1)","var(--c2)","var(--c3)","var(--c4)","var(--c5)","var(--c6)","var(--c7)"],VOTHER="var(--cother)";
+const tipA=s=>esc(s).replace(/\n/g,"&#10;");
+// secteur d'anneau entre les angles a0 et a1 (0 = en haut, sens horaire)
+function arcP(cx,cy,r0,r1,a0,a1){const p=(r,a)=>[(cx+r*Math.sin(a)).toFixed(2),(cy-r*Math.cos(a)).toFixed(2)],big=a1-a0>Math.PI?1:0,[x1,y1]=p(r1,a0),[x2,y2]=p(r1,a1),[x3,y3]=p(r0,a1),[x4,y4]=p(r0,a0);
+ return`M${x1},${y1}A${r1},${r1} 0 ${big} 1 ${x2},${y2}L${x3},${y3}A${r0},${r0} 0 ${big} 0 ${x4},${y4}Z`}
+// camembert en anneau + légende avec montant et pourcentage
+function donut(sl,cLab,cVal,base,aria){const T=sl.reduce((a,x)=>a+x.a,0);if(!(T>0))return`<p class="note">Pas encore de données.</p>`;base=base||T;
+ const n=sl.length,gap=n>1?0.025:0;let a=0;
+ const segs=sl.map(x=>{const w=x.a/T*2*Math.PI,a0=a+gap/2,a1=a+w-gap/2;a+=w;if(a1-a0<=0.002)return"";
+  const full=n===1?`<circle cx="80" cy="80" r="53" fill="none" stroke-width="26" style="stroke:${x.c}"/>`:`<path d="${arcP(80,80,40,66,a0,a1)}" style="fill:${x.c}"/>`;
+  return`<g class="vseg" data-tip="${tipA(x.n+"\n"+eur(x.a)+" · "+pct(x.a/base))}">${full}</g>`}).join("");
+ return`<div class="donut"><svg viewBox="0 0 160 160" width="150" height="150" role="img" aria-label="${esc(aria)}">${segs}<text x="80" y="76" text-anchor="middle" font-size="11" style="fill:var(--mut)">${esc(cLab)}</text><text x="80" y="94" text-anchor="middle" font-size="15" font-weight="700" style="fill:var(--ink)">${kE(cVal)}</text></svg>
+ <ul class="vleg">${sl.map(x=>`<li data-tip="${tipA(x.n+"\n"+eur(x.a)+" · "+pct(x.a/base))}"><i style="background:${x.c}"></i><span>${esc(x.n)}</span><b>${pct(x.a/base)}</b><small>${eur(x.a)}</small></li>`).join("")}</ul></div>`}
+// barres groupées par mois (une seule échelle)
+function barsM(series,ms,aria){const W=340,H=170,pl=36,pr=6,pt=10,pb=22,mx=Math.max(1,...series.flatMap(s=>ms.map(k=>s.f(k)))),nice=niceMax(mx),Y=y=>pt+(1-y/nice)*(H-pt-pb);
+ const bw=(W-pl-pr)/12,gw=Math.min(9,(bw-6)/series.length);
+ const grid=[0,nice/2,nice].map(y=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(y).toFixed(1)}" y2="${Y(y).toFixed(1)}" style="stroke:var(--line)"/><text x="${pl-4}" y="${(Y(y)+3).toFixed(1)}" text-anchor="end" font-size="9" style="fill:var(--mut)">${kE(y)}</text>`).join("");
+ const bars=ALL.map(k=>{const x0=pl+k*bw+(bw-gw*series.length-2*(series.length-1))/2;
+  return series.map((s,j)=>{const val=ms.includes(k)?Math.max(0,s.f(k)):0;if(!(val>0))return"";const h=Y(0)-Y(val);
+   return`<rect class="vbar" x="${(x0+j*(gw+2)).toFixed(1)}" y="${Y(val).toFixed(1)}" width="${gw.toFixed(1)}" height="${Math.max(1,h).toFixed(1)}" rx="2" style="fill:${s.c}" data-tip="${tipA(MOIS[k]+"\n"+s.n+" : "+eur(val))}"/>`}).join("")+`<text x="${(pl+k*bw+bw/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="9" style="fill:var(--mut)">${MOIS[k][0]}</text>`}).join("");
+ return`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(aria)}">${grid}${bars}</svg><div class="vkey">${series.map(s=>`<span><i style="background:${s.c}"></i>${esc(s.n)}</span>`).join("")}</div>`}
+function niceMax(x){const p=Math.pow(10,Math.floor(Math.log10(x))),q=x/p;return(q<=1?1:q<=2?2:q<=2.5?2.5:q<=5?5:10)*p}
+// courbe d'un solde mois par mois
+function lineM(f,ms,col,aria){if(!ms.length)return`<p class="note">Pas encore de données.</p>`;const W=340,H=150,pl=40,pr=12,pt=12,pb=22;
+ const vals=ms.map(k=>[k,f(k)]),lo=Math.min(...vals.map(x=>x[1])),hi=Math.max(...vals.map(x=>x[1])),pad0=(hi-lo)*0.15||Math.max(1,hi*0.1),y0=Math.max(0,lo-pad0),y1=hi+pad0;
+ const X=k=>pl+k/11*(W-pl-pr),Y=y=>pt+(1-(y-y0)/(y1-y0))*(H-pt-pb);
+ const d=vals.map(([k,y],i)=>(i?"L":"M")+X(k).toFixed(1)+","+Y(y).toFixed(1)).join(""),area=d+`L${X(vals[vals.length-1][0]).toFixed(1)},${Y(y0).toFixed(1)}L${X(vals[0][0]).toFixed(1)},${Y(y0).toFixed(1)}Z`;
+ const last=vals[vals.length-1];
+ return`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(aria)}">${[y0,(y0+y1)/2,y1].map(y=>`<line x1="${pl}" x2="${W-pr}" y1="${Y(y).toFixed(1)}" y2="${Y(y).toFixed(1)}" style="stroke:var(--line)"/><text x="${pl-4}" y="${(Y(y)+3).toFixed(1)}" text-anchor="end" font-size="9" style="fill:var(--mut)">${kE(y)}</text>`).join("")}
+ <path d="${area}" style="fill:${col};opacity:.12"/><path d="${d}" fill="none" stroke-width="2" stroke-linejoin="round" style="stroke:${col}"/>
+ ${vals.map(([k,y])=>`<circle cx="${X(k).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="4" stroke-width="2" style="fill:${col};stroke:var(--card)" class="vdot" data-tip="${tipA(MOIS[k]+"\n"+eur(y))}"/><circle cx="${X(k).toFixed(1)}" cy="${Y(y).toFixed(1)}" r="12" fill="transparent" data-tip="${tipA(MOIS[k]+"\n"+eur(y))}"/>`).join("")}
+ <text x="${Math.min(X(last[0]),W-pr-2).toFixed(1)}" y="${(Y(last[1])-9).toFixed(1)}" text-anchor="end" font-size="11" font-weight="700" style="fill:var(--ink)">${eur(last[1])}</text>
+ ${ALL.map(k=>`<text x="${X(k).toFixed(1)}" y="${H-7}" text-anchor="middle" font-size="9" style="fill:var(--mut)">${MOIS[k][0]}</text>`).join("")}</svg>`}
+// infobulle : survol à la souris, toucher sur mobile
+function vtipShow(el,x,y){let o=document.getElementById("vtip");if(!o){o=document.createElement("div");o.id="vtip";o.setAttribute("role","tooltip");document.body.appendChild(o)}
+ const [h,...r]=el.getAttribute("data-tip").split("\n");o.innerHTML=`<b>${esc(h)}</b>${r.map(t=>`<span>${esc(t)}</span>`).join("")}`;o.style.display="block";
+ const w=o.offsetWidth,hh=o.offsetHeight;o.style.left=Math.max(8,Math.min(innerWidth-w-8,x-w/2))+"px";o.style.top=Math.max(8,y-hh-14)+"px"}
+function vtipHide(){const o=document.getElementById("vtip");if(o)o.style.display="none"}
+document.addEventListener("pointermove",e=>{if(e.pointerType!=="mouse")return;const t=e.target.closest&&e.target.closest("[data-tip]");if(t)vtipShow(t,e.clientX,e.clientY);else vtipHide()});
+document.addEventListener("click",e=>{const t=e.target.closest&&e.target.closest("[data-tip]");if(t)vtipShow(t,e.clientX,e.clientY);else vtipHide()},true);
+addEventListener("scroll",vtipHide,{passive:true});
 // ───────── Vue annuelle ─────────
 function year(){
- const T=ALL.map(tot),Sx=k=>T.reduce((a,t)=>a+t[k],0),nm=Math.max(1,ALL.filter(active).length);
+ const T=ALL.map(tot),Sx=k=>T.reduce((a,t)=>a+t[k],0),ms=ALL.filter(active),nm=Math.max(1,ms.length);
  const i=Sx("i"),d=Sx("d"),s=Sx("s"),p=Sx("p"),R=ALL.reduce((a,k)=>a+retM(k),0),L=lastMonth();
- const fx=ALL.reduce((a,k)=>a+fixPre(k),0),fp=ALL.reduce((a,k)=>a+sum(k,"fix"),0),fr=ALL.reduce((a,k)=>a+fixRest(k),0);
- const mx=Math.max(1,...T.map(t=>t.i),...T.map(t=>t.d)),cu=ALL.map(totSolde),cm=Math.max(1,...cu);
- const ch=(f,col,mxv)=>`<div class="chart">${ALL.map(k=>`<div><i style="height:${Math.max(0,f(k))/mxv*110}px;background:${col}"></i>${MOIS[k][0]}</div>`).join("")}</div>`;
- return`<h2 style="margin:0 0 10px">${S.year}</h2><button type="button" class="cp" data-act="go" data-v="bilan" style="margin:0 0 12px">📋 Bilan de fin d'année ${S.year}</button>
- <div class="kpis"><div class="kpi inc"><small>Revenus</small><b>${eur(i)}</b></div><div class="kpi exp"><small>Dépenses</small><b>${eur(d)}</b></div><div class="kpi sav"><small>Épargne versée · ${pct(i?s/i:0)}</small><b>${eur(s)}</b></div><div class="kpi env"><small>Enveloppes versées</small><b>${eur(p)}</b></div><div class="kpi"><small>Reste (hors report)</small><b>${eur(i-d-s-p)}</b></div></div>
+ const fx=ALL.reduce((a,k)=>a+fixPre(k),0),fp=ALL.reduce((a,k)=>a+sum(k,"fix"),0),fr=ALL.reduce((a,k)=>a+fixRest(k),0),ev=ALL.reduce((a,k)=>a+sum(k,"env"),0);
+ // où va l'argent
+ const rest=Math.max(0,i-fp-ev-p-s),where=[{n:"Factures",a:fp},{n:"Dépenses courantes",a:ev},{n:"Épargne",a:s},{n:"Enveloppes",a:p},{n:"Reste",a:rest}].map((x,k)=>Object.assign(x,{c:VC[k]})).filter(x=>x.a>0.005);
+ // dépenses par poste : les 6 plus gros, le reste dans « Autres »
+ const rows=[...S.g.fix.map(n=>["fix",n]),...S.g.env.map(n=>["env",n])].map(([g,n])=>({n,a:ALL.reduce((a,m)=>a+(g==="env"?spent(m,n):v(m,g,n)),0)})).filter(x=>x.a>0).sort((a,b)=>b.a-a.a);
+ const top=rows.slice(0,6).map((x,k)=>Object.assign(x,{c:VC[k]})),oth=rows.slice(6).reduce((a,x)=>a+x.a,0);if(oth>0)top.push({n:`Autres (${rows.length-6})`,a:oth,c:VOTHER});
+ const pf=fx>0?Math.min(1,fp/fx):0;
+ const num=`<div class="kpis"><div class="kpi inc"><small>Revenus</small><b>${eur(i)}</b></div><div class="kpi exp"><small>Dépenses</small><b>${eur(d)}</b></div><div class="kpi sav"><small>Épargne versée · ${pct(i?s/i:0)}</small><b>${eur(s)}</b></div><div class="kpi env"><small>Enveloppes versées</small><b>${eur(p)}</b></div><div class="kpi"><small>Reste (hors report)</small><b>${eur(i-d-s-p)}</b></div></div>
  <div class="kpis"><div class="kpi inc"><small>Revenu moyen / mois</small><b>${eur(i/nm)}</b></div><div class="kpi exp"><small>Dépenses moy. / mois</small><b>${eur(d/nm)}</b></div><div class="kpi sav"><small>Épargne moy. / mois</small><b>${eur(s/nm)}</b></div></div>
  <div class="kpis"><div class="kpi"><small>Factures prévues</small><b>${eur(fx)}</b></div><div class="kpi exp"><small>Factures payées</small><b>${eur(fp)}</b></div><div class="kpi"><small>Reste à sortir</small><b>${eur(fr)}</b></div></div>
  <div class="kpis"><div class="kpi sav"><small>Retraits d'épargne</small><b>${eur(R)}</b></div><div class="kpi sav"><small>Épargne nette (versé − retraits)</small><b>${eur(s-R)}</b></div><div class="kpi sav"><small>Solde total fin ${MOIS[L].toLowerCase()}</small><b>${eur(totSolde(L))}</b></div></div>
- <div class="grid">${posteCard(ALL,"Dépenses par poste (année)")}<div class="card"><h2>Revenus et dépenses par mois</h2>${ch(k=>T[k].i,"var(--inc)",mx)}${ch(k=>T[k].d,"var(--exp)",mx)}</div><div class="card sav"><h2>Solde total de l'épargne</h2>${ch(k=>cu[k],"var(--sav)",cm)}</div></div>`}
+ <div class="card"><h2>Mois par mois</h2>${ms.map(k=>`<div class="row"><span>${MOIS[k]}</span><span style="text-align:right">${eur(T[k].i)} <small class="note">revenus</small><br>${eur(T[k].d)} <small class="note">dépenses</small></span></div>`).join("")||'<p class="note">Aucun mois saisi.</p>'}</div>`;
+ return`<h2 style="margin:0 0 10px">${S.year}</h2><button type="button" class="cp" data-act="go" data-v="bilan" style="margin:0 0 12px">📋 Bilan de fin d'année ${S.year}</button>
+ <div class="kpis"><div class="kpi inc"><small>Revenus</small><b>${kE(i)}</b></div><div class="kpi exp"><small>Dépenses</small><b>${kE(d)}</b></div><div class="kpi sav"><small>Épargne</small><b>${kE(s)}</b><small class="note">${pct(i?s/i:0)} des revenus</small></div></div>
+ <div class="grid">
+ <div class="card"><h2>Où va votre argent</h2>${donut(where,"Revenus",i,i||null,"Répartition des revenus de l'année")}</div>
+ <div class="card exp"><h2>Dépenses par poste</h2>${donut(top,"Total",rows.reduce((a,x)=>a+x.a,0),null,"Dépenses de l'année par poste")}${rows.length?`<p class="note" style="margin:8px 0 0">Le plus gros poste : <b>${esc(rows[0].n)}</b> (${pct(rows[0].a/rows.reduce((a,x)=>a+x.a,0))}).</p>`:""}</div>
+ <div class="card"><h2>Revenus et dépenses par mois</h2>${barsM([{n:"Revenus",c:"var(--c3)",f:k=>T[k].i},{n:"Dépenses",c:"var(--c2)",f:k=>T[k].d}],ms,"Revenus et dépenses de chaque mois")}</div>
+ <div class="card sav"><h2>Épargne totale</h2>${lineM(totSolde,ms.length?ALL.slice(0,L+1):[],"var(--c7)","Solde total de l'épargne à la fin de chaque mois")}</div>
+ ${fx>0?`<div class="card"><h2>Factures de l'année</h2><div class="cat"><div><span>Payées</span><span>${eur(fp)} / ${eur(fx)}</span></div><div class="bar"><i style="width:${(pf*100).toFixed(1)}%;background:var(--c1)"></i></div></div><p class="note" style="margin:6px 0 0">${fr>0.5?`Il reste ${eur(fr)} à sortir.`:"Tout est payé ✓"}</p></div>`:""}
+ </div>
+ <details data-id="ynum" style="margin-top:12px"><summary>Voir tous les chiffres</summary>${num}</details>`}
 // ───────── Conseils d'épargne ─────────
 function histo(){stash();const ny=new Date(),yrs=[...new Set([...Object.keys(S.yrs||{}).map(Number),S.year])].sort(),out=[];
  yrs.forEach(y=>withYear(y,()=>{for(let m=0;m<12;m++){if(y*12+m>=nowYM())continue;
@@ -729,9 +791,10 @@ const goalDep=m=>[...new Set(S.goals.flatMap(g=>g.lines))].filter(n=>S.g.sav.inc
 // S'il y a un objectif ⭐ prioritaire ou « dès que possible », toute la capacité est utilisée (et au moins le minimum).
 // Rn = planning du nécessaire (ce qu'il faut verser), R = planning avec toute la capacité, Rv = planning réaliste (Rn si la capacité suffit, sinon R).
 const hasAsap=G=>G.some(x=>x.rem>0.005&&(x.nd||x.pr));
-const planNeed=(G,cap)=>{const mc=planMinCap(G);return hasAsap(G)?Math.max(cap||0,mc):mc};
+// Le plan se base sur le montant proposé (capacité) s'il couvre le minimum : ce qui est versé en plus remplit les objectifs plus vite.
+const planNeed=(G,cap)=>Math.max(cap||0,planMinCap(G));
 // plan du mois m, calculé sur les soldes du début du mois
-function planAt(m,cap0){if(!S.goals.length)return null;const G=goalG(m-1),cap=cap0!=null?cap0:capNow(),minC=planMinCap(G),need=hasAsap(G)?Math.max(cap||0,minC):minC,
+function planAt(m,cap0){if(!S.goals.length)return null;const G=goalG(m-1),cap=cap0!=null?cap0:capNow(),minC=planMinCap(G),need=planNeed(G,cap),
   Rn=planCore(G,need),al=Rn.months[0]||G.map(()=>0);
  return{m,G,Rn,cap,minC,need,capReq:need,al,lines:linesOf(G,al,m),tot:al.reduce((a,x)=>a+x,0),base:S.year*12+m-1}}
 // suite du plan à partir de l'état réel du mois m : ce qui est déjà versé (même plus que prévu, même sur une autre ligne) est déduit,
@@ -779,6 +842,7 @@ function lateTxt(Lv){if(Lv.ok||!(Lv.P.cap>0))return"";const G=Lv.G,R=Lv.R,lab=k=
 function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(pm);if(!Lv)return"";
  const{P,G,R,Rn,Rv,needF,ok,base}=Lv,cap=P.cap,ci=capInfo(),mc=Math.min(pm,11),asap=hasAsap(G);
  const rl=pm<12?Lv.rest:{},ln=pm<12?[...new Set([...Object.keys(P.lines),...Object.keys(rl)])]:[],planned=pm<12?sumO(P.lines):0,dep=pm<12?Lv.dep:0,rest=pm<12?Lv.restTot:0;
+ const minC=planMinCap(G);
  const act=G.filter(x=>x.rem>0.005);
  if(!act.length&&rest<=0.5&&S.goals.every(g=>goalSol(g,mc)-resOn(g)>=g.t-0.005))return`<div class="card sav"><h2>📅 Plan d'épargne</h2><p class="note" style="margin:0">Tous vos objectifs sont atteints 🎉</p></div>`;
  const lab=k=>ymLab(base+k,true),labL=k=>ymLab(base+k);
@@ -800,9 +864,11 @@ function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(
   else if(ok)verdict=`🟢 Le plan utilise toute votre capacité (<b>${eur(cap)}</b> par mois)${dated.length?" et tient toutes vos échéances":""}.${ndl.length?` ${ndTxt}.`:""}`;
   else verdict=`🟠 Il faut épargner au minimum <b>${eur(needF)} par mois</b> pour tout atteindre à temps, soit <b>${eur(needF-cap)}</b> de plus que votre capacité (${eur(cap)}). ${lateL()}.${ndl.length?` Sans échéance : ${ndTxt}.`:""}`}
  else if(!(cap>0))verdict=`⚪ Il faut verser <b>${eur(needF)} par mois</b> pour tenir toutes vos échéances. Indiquez ci-dessus combien vous pouvez épargner par mois pour vérifier que c'est tenable.`;
- else if(ok)verdict=`🟢 Il faut verser <b>${eur(needF)} par mois</b> pour tenir toutes vos échéances. Votre capacité (${eur(cap)}) suffit${cap-needF>=1?`, avec une marge de ${eur(cap-needF)} par mois`:""}.`;
+ else if(ok)verdict=`🟢 Votre versement de <b>${eur(cap)} par mois</b> tient toutes vos échéances${cap-minC>=1?`, avec une marge de ${eur(cap-minC)} par mois (le minimum serait ${eur(minC)})`:""}.`;
  else verdict=`🟠 Il faut verser <b>${eur(needF)} par mois</b> pour tenir toutes vos échéances, soit <b>${eur(needF-cap)}</b> de plus que votre capacité (${eur(cap)}). À votre capacité : ${lateL()}.`;
- const faster=!asap&&ok&&cap-needF>=1?idx.filter(i=>R.done[i]!=null&&Rn.done[i]!=null&&R.done[i]<Rn.done[i]).map(i=>`${esc(G[i].name)} en ${labL(R.done[i])}`):[];
+ // avance : objectifs atteints plus tôt qu'avec le minimum seul
+ const Base=cap>0&&minC>0?planCore(G,minC):null;
+ const faster=Base&&ok&&cap-minC>=1?idx.filter(i=>R.done[i]!=null&&Base.done[i]!=null&&R.done[i]<Base.done[i]).map(i=>({i,a:R.done[i],b:Base.done[i]})):[];
  // graphique
  const Kc=Math.min(K,36),W=340,H=150,pl=40,pr=10,pt=10,pb=24,mx=Math.max(1,cap,...Rn.months.slice(0,Kc).map(a=>a.reduce((x,y)=>x+y,0))),bw=(W-pl-pr)/Math.max(1,Kc),Y=y=>pt+(1-y/mx)*(H-pt-pb);
  const bars=Rn.months.slice(0,Kc).map((al,k)=>{let y0=0;return idx.map(i=>{const h=al[i];if(h<=0.005)return"";const r=`<rect x="${(pl+k*bw+bw*0.12).toFixed(1)}" y="${Y(y0+h).toFixed(1)}" width="${(bw*0.76).toFixed(1)}" height="${(Y(y0)-Y(y0+h)).toFixed(1)}" style="fill:${col(i)}"/>`;y0+=h;return r}).join("")}).join("");
@@ -813,10 +879,10 @@ function planCard(){if(!S.goals.length)return"";const pm=planNowM(),Lv=planView(
  ${rest>0.5?`<button type="button" class="cp gcta" data-act="gpayall" data-m="${pm}">🎯 Verser le prévu du mois · ${eur(rest)}</button>`:`<p class="note" style="margin:0 0 6px;color:var(--inc)">✓ Versements du mois faits.</p>`}`
   :ft>0?`<div class="kpis" style="margin-top:8px"><div class="kpi sav"><small>À épargner en ${labL(1)}</small><b>${eur(ft)}</b></div><div class="kpi"><small>Nécessaire ensuite</small><b>${eur(needF)}</b><small class="note">par mois</small></div></div>`:"";
  return`<div class="card sav"><h2>📅 Plan d'épargne</h2>
- ${ii("Le <b>minimum à verser chaque mois</b> pour tenir toutes vos échéances.",`Ordre : d'abord les objectifs ⭐ prioritaires, puis l'échéance la plus proche, puis les objectifs « dès que possible »${asap?" (ces derniers reçoivent toute votre capacité)":""}. Il tient compte de vos versements et retraits réels${!S.noInvPlan&&S.goals.some(g=>g.lines.some(n=>invRate(n)>0))?", et des intérêts attendus de vos placements":""}${(S.res||[]).length?" (les sommes réservées pour un achat sont déduites)":""}. Votre capacité d'épargne sert à vérifier que c'est tenable ; ce que vous versez en plus fait avancer vos objectifs.`)}
+ ${ii("Le <b>versement mensuel</b> prévu pour tenir toutes vos échéances.",`Ordre : d'abord les objectifs ⭐ prioritaires, puis l'échéance la plus proche, puis les objectifs « dès que possible »${asap?" (ces derniers reçoivent toute votre capacité)":""}. Il tient compte de vos versements et retraits réels${!S.noInvPlan&&S.goals.some(g=>g.lines.some(n=>invRate(n)>0))?", et des intérêts attendus de vos placements":""}${(S.res||[]).length?" (les sommes réservées pour un achat sont déduites)":""}. Le plan utilise le montant que vous proposez (capacité d'épargne ci-dessous, par défaut votre moyenne récente) dès qu'il couvre ce minimum : ce que vous versez en plus remplit les objectifs plus vite.`)}
  <label class="row"><span>Capacité d'épargne / mois<br><small class="note">${capSet()?"saisie":"automatique"}${ci.n?` · moyenne ${ci.lab} : ${eur(ci.avg)}`:" · aucun versement récent"}</small></span><input type="number" inputmode="decimal" step="5" min="0" data-gcap value="${capSet()?S.goalCap:""}" placeholder="${Math.round(ci.avg)}" aria-label="Capacité d'épargne mensuelle"></label>
  <div class="hl">${verdict}</div>
- ${faster.length?`<p class="note" style="margin:6px 0 0">En versant toute votre capacité chaque mois (${eur(cap)}), vos objectifs seraient atteints plus tôt : ${faster.join(", ")}.</p>`:""}
+ ${faster.length?`<div class="hl" style="margin-top:8px">🚀 Avec ${eur(cap)} par mois, vous avancez plus vite que prévu : ${faster.map(x=>`<b>${esc(G[x.i].name)}</b> en ${labL(x.a)} au lieu de ${labL(x.b)}`).join(", ")}.<br><small class="note">Vous pouvez <b>augmenter un objectif</b> (montant ou date), <b>en créer un autre</b> avec cette marge, ou <b>garder ce rythme</b> pour finir plus tôt.</small></div><button type="button" class="cp" data-act="go" data-v="obj" style="margin:6px 0 0">Ouvrir les objectifs</button>`:""}
  ${now}
  ${phRows?`<h2 style="margin-top:12px">${pm<12?"Les mois suivants":"Mois par mois"}</h2><p class="note" style="margin:0 0 4px">Ce qu'il faut verser pour tenir vos échéances${asap?", avec toute votre capacité":""}.</p>${phRows}`:""}
  ${K>0&&idx.length?`<div style="margin-top:10px">${chart}</div><p class="note" style="margin:4px 0 0">${idx.map(i=>`<span style="color:${col(i)}">■</span> ${esc(G[i].name)}`).join(" · ")}${cap>0?" · ╍ capacité":""}${K>36?" · 36 premiers mois affichés":""}</p>`:""}
@@ -1734,12 +1800,13 @@ function importTxCsv(H,body){const c=n=>H.indexOf(n),ci={y:c("annee"),d:c("date"
  save();nav();draw();alert("Import terminé : "+n+" dépense(s) ajoutée(s)"+(items.length-n?", "+(items.length-n)+" déjà présente(s)":"")+(bad?", "+bad+" ignorée(s)":"")+".")}
 const CSV_MODEL="Année;Mois;Groupe;Ligne;Type;Montant\r\n2025;Août;Revenus;Salaire;Réel;1800,50\r\n2025;Août;Factures;Loyer;Prévu;700\r\n2025;Août;Factures;Loyer;Payé;700\r\n2025;Août;Dépenses;Courses;Budget;300\r\n2025;Août;Enveloppes;Cadeaux;Versé;40\r\n2025;Août;Épargne;Projet;Versé;100\r\n2025;Départ;Épargne;Projet;Solde de départ;1500\r\n";
 // ───────── Tutoriel et nouveautés ─────────
-const APP_VER=50;
+const APP_VER=52;
 const TUTO=[
 {i:"📅",t:"Votre mois",b:"Tout se passe dans l'onglet Mois : ce qui rentre, ce qui sort, ce qu'il reste.",l:["Touchez une carte (Revenus, Factures, Dépenses, Épargne) pour la remplir.","Changez de mois avec la barre du haut."]},
 {i:"➕",t:"Noter une dépense",b:"Le bouton + en bas à droite : un montant, une catégorie, c'est noté.",l:["Les factures avec un jour de prélèvement se comptent toutes seules à cette date.","Touchez ⓘ pour en savoir plus sur une carte."]},
 {i:"🧩",t:"À votre rythme",b:"Activez d'autres fonctions quand vous en avez besoin.",l:["Réglages › Fonctions : objectifs, enveloppes, import de relevé PDF, placements…","Vos données restent sur votre téléphone : pensez à les enregistrer (Réglages › Application)."]}];
 const CHANGES=[
+{v:51,t:"Annuel en graphiques",l:["L'onglet Annuel montre maintenant des graphiques : où va votre argent et dépenses par poste (camemberts), revenus et dépenses mois par mois, évolution de l'épargne.","Touchez une part ou une barre pour voir le montant. Tous les chiffres restent dans « Voir tous les chiffres »."]},
 {v:50,t:"Rappel de sauvegarde le 1er et le 15",l:["Le 1er et le 15 de chaque mois, l'appli propose d'enregistrer une copie de vos données dans Fichiers.","Le rappel reste en haut du mois tant que la copie n'est pas faite."]},
 {v:49,t:"Objectifs : chaque objectif a son prévu",l:["Ce que vous versez en plus sur un objectif le fait avancer, lui seul : il ne réduit plus ce qu'il faut verser sur les autres ce mois-ci.","Exemple : 25 € sur Vacances alors que rien n'était prévu → Coups durs garde son montant à verser, et Vacances aura 25 € de moins à recevoir plus tard."]},
 {v:48,t:"Plus simple pour tout le monde",l:["Réglages › Fonctions : activez seulement ce qui vous sert (objectifs, enveloppes, import PDF, placements…). « Mode simple » masque le reste, vos données sont gardées.","À la première ouverture, une mise en route en quelques questions prépare le budget (revenus, factures, dépenses, épargne, paye).","Tutoriel plus court, et des explications repliées derrière ⓘ."]},
